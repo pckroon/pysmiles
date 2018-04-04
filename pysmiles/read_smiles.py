@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Mar 10 17:08:10 2018
+# Copyright 2018 Peter C Kroon
 
-@author: Peter Kroon
-"""
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import networkx as nx
-import itertools
 import enum
+
 
 class TokenType(enum.Enum):
     ATOM = enum.auto()
@@ -15,6 +23,7 @@ class TokenType(enum.Enum):
     BRANCH_START = enum.auto()
     BRANCH_END = enum.auto()
     RING_NUM = enum.auto()
+
 
 def tokenize(smiles):
     organic_subset = 'B C N O P S F Cl Br I * b c n o s p'.split()
@@ -35,10 +44,7 @@ def tokenize(smiles):
                     break
             yield TokenType.ATOM, token
         elif char in organic_subset:
-            try:
-                peek = next(smiles)
-            except StopIteration:
-                peek = ''
+            peek = next(smiles, '')
             if char + peek in organic_subset:
                 yield TokenType.ATOM, char + peek
                 peek = None
@@ -54,6 +60,7 @@ def tokenize(smiles):
             yield TokenType.RING_NUM, int(next(smiles) + next(smiles))
         elif char.isdigit():
             yield TokenType.RING_NUM, int(char)
+
 
 def parse_atom(atom):
     if not atom.startswith('['):
@@ -82,7 +89,8 @@ def parse_atom(atom):
     # Symbol
     idx = 0
     while idx < len(atom):
-        if (not atom[idx].isalpha() and atom[idx] != '*') or (idx != 0 and atom[idx].isupper()):
+        if (not atom[idx].isalpha() and atom[idx] != '*') or\
+              (idx != 0 and atom[idx].isupper()):
             break
         idx += 1
     element = atom[:idx]
@@ -137,8 +145,6 @@ def parse_atom(atom):
     if class_:
         out['class'] = int(class_[0])
     return out
-
-
 
 
 def read_smiles(smiles):

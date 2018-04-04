@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Mar  7 10:23:35 2018
+# Copyright 2018 Peter C Kroon
 
-@author: Peter Kroon
-"""
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import networkx as nx
 from collections import defaultdict
@@ -120,7 +128,7 @@ if __name__ == '__main__':
         mol.nodes[idx]['element'] = ele
     mol.edges[1, 2]['order'] = 2
     print(write_smiles(mol))
-    
+
     mol = nx.cycle_graph(6)
     mol.add_edge(3, 6)
     for node_key in mol:
@@ -135,7 +143,7 @@ if __name__ == '__main__':
     for idx, ele in enumerate('ABCDEF'):
         mol.nodes[idx]['element'] = ele
     print(write_smiles(mol))
-    
+
     mol = nx.Graph()
     mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4), (1, 5), (3, 6)])
     for idx, ele in enumerate('CCCCOCO'):
@@ -143,4 +151,3 @@ if __name__ == '__main__':
     mol.nodes[4]['charge'] = -1
     mol.edges[3, 6]['order'] = 2
     print(write_smiles(mol))
-    
