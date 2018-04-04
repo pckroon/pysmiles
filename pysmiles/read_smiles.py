@@ -15,6 +15,18 @@
 
 import networkx as nx
 import enum
+import re
+
+
+ISOTOPE_PATTERN = r'(?P<isotope>[\d]+)?'
+ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|\*|[A-Z][a-z]{0,2})'
+STEREO_PATTERN = r'(?P<stereo>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
+                  '@TB[\d]{1,2})?'
+HCOUNT_PATTERN = r'(?P<hcount>H[\d]?)?'
+CHARGE_PATTERN = r'(?P<charge>--|\+\+|-[\d]{0,2}|\+[\d]{0,2})?'
+CLASS_PATTERN = r'(?::(?P<class>[\d]+))?'
+ATOM_PATTERN = re.compile(ISOTOPE_PATTERN + ELEMENT_PATTERN + STEREO_PATTERN +
+                          HCOUNT_PATTERN + CHARGE_PATTERN + CLASS_PATTERN)
 
 
 class TokenType(enum.Enum):
@@ -63,87 +75,40 @@ def tokenize(smiles):
 
 
 def parse_atom(atom):
-    if not atom.startswith('['):
-        return {'element': atom} if atom != '*' else {}
-    # '[' isotope? symbol chiral? hcount? charge? class? ']'
-    # isotope ::= NUMBER
-    # chiral ::= '@' | '@@'
-    # hcount ::= 'H' | 'H' DIGIT
-    # charge ::= '-' | '-' DIGIT? DIGIT | '+' | '+' DIGIT? DIGIT | '--' deprecated | '++' deprecated
-    # class ::= ':' NUMBER
-    out = {}
     atom = atom.strip('[]')
-    atom, *class_ = atom.split(':')
-
-    # Isotope?
-    idx = 0
-    while idx < len(atom):
-        if not atom[idx].isdigit():
-            break
-        idx += 1
-    isotope = atom[:idx]
-    atom = atom[idx:]
-    if isotope:
-        out['isotope'] = int(isotope)
-
-    # Symbol
-    idx = 0
-    while idx < len(atom):
-        if (not atom[idx].isalpha() and atom[idx] != '*') or\
-              (idx != 0 and atom[idx].isupper()):
-            break
-        idx += 1
-    element = atom[:idx]
-    atom = atom[idx:]
-    if element != '*':
-        out['element'] = element
-
-    # Stereo?
-    idx = 0
-    while idx < len(atom):
-        if atom[idx] in 'H+-':
-            break
-        idx += 1
-    stereo = atom[:idx]
-    atom = atom[idx:]
-    if stereo:
-        print("I don't know how to deal with stereochemistry yet...")
-        out['stereo'] = stereo
-
-    # Hcount?
-    idx = 0
-    while idx < len(atom):
-        if atom[idx] in '+-':
-            break
-        idx += 1
-    hcount = atom[:idx]
-    atom = atom[idx:]
-    if len(hcount) == 2:
-        hcount = int(hcount[1])
-    elif hcount:
-        hcount = 1
-    if hcount:
-        out['hcount'] = hcount
-
-    # Charge?
-    charge = atom
-    if charge == '--':
-        charge = -2
-    elif charge == '++':
-        charge = +2
-    elif charge == '-':
-        charge = -1
-    elif charge == '+':
-        charge = +1
-    elif charge:
-        charge = int(charge)
-    else:
-        charge = 0
-
-    if charge:
+    match = ATOM_PATTERN.fullmatch(atom)
+    if match is None:
+        raise ValueError('The atom {} is malformatted'.format(atom))
+    out = match.groupdict()
+    out = {k: v for k, v in out.items() if v is not None}
+    if 'isotope' in out:
+        out['isotope'] = int(out['isotope'])
+    if out['element'] == '*':
+        del out['element']
+    if 'hcount' in out:
+        # Starts with H
+        hcount = out['hcount']
+        if hcount == 'H':
+            out['hcount'] = 1
+        else:
+            out['hcount'] = int(hcount[1:])
+    if 'stereo' in out:
+        print("I don't quite know how to handle stereo yet...")
+    if 'charge' in out:
+        charge = out['charge']
+        if charge == '--':
+            charge = -2
+        elif charge == '++':
+            charge = +2
+        elif charge == '-':
+            charge = -1
+        elif charge == '+':
+            charge = +1
+        else:
+            charge = int(charge)
         out['charge'] = charge
-    if class_:
-        out['class'] = int(class_[0])
+    if 'class' in out:
+        out['class'] = int(out['class'])
     return out
 
 
@@ -152,15 +117,18 @@ def read_smiles(smiles):
     mol = nx.Graph()
     anchor = None
     idx = 0
-    next_bond = 1
+    default_bond = 1
+    next_bond = None
     branches = []
     ring_nums = {}
     for tokentype, token in tokenize(smiles):
         if tokentype == TokenType.ATOM:
             mol.add_node(idx, **parse_atom(token))
             if anchor is not None:
+                if next_bond is None:
+                    next_bond = default_bond
                 mol.add_edge(anchor, idx, order=next_bond)
-                next_bond = 1
+                next_bond = None
             anchor = idx
             idx += 1
         elif tokentype == TokenType.BRANCH_START:
@@ -168,16 +136,26 @@ def read_smiles(smiles):
         elif tokentype == TokenType.BRANCH_END:
             anchor = branches.pop()
         elif tokentype == TokenType.BOND_TYPE:
-            # TODO: Bond type to ringnum
             next_bond = bond_to_order[token]
         elif tokentype == TokenType.RING_NUM:
-            # idx is the index of the *next* atom we're adding. therefor: -1.
             if token in ring_nums:
-                mol.add_edge(idx - 1, ring_nums[token], order=next_bond)
-                next_bond = 1
+                jdx, order = ring_nums[token]
+                if next_bond is None and order is None:
+                    next_bond = default_bond
+                elif order is None:  # Note that the check is needed,
+                    next_bond = next_bond  # But this could be pass.
+                elif next_bond is None:
+                    next_bond = order
+                elif next_bond != order:  # Both are not None
+                    raise ValueError('Conflicting bond orders for ring '
+                                     'between indices {}'.format(token))
+                # idx is the index of the *next* atom we're adding. So: -1.
+                mol.add_edge(idx - 1, jdx, order=next_bond)
+                next_bond = None
                 del ring_nums[token]
             else:
-                ring_nums[token] = idx - 1
+                ring_nums[token] = (idx - 1, next_bond)
+                next_bond = None
     return mol
 
 
@@ -188,7 +166,9 @@ if __name__ == '__main__':
     mol = read_smiles('C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C))))))))))))))))))))C')
     mol = read_smiles('N1CC2CCCC2CC1')
     mol = read_smiles('C%25CCCCC%25')
-    mol = read_smiles('C1CCCCC1C1CCCCC1')
-    mol = read_smiles('C1CC[13CH2]CC1C1CCCCC1')
+    mol3 = read_smiles('C1CCCCC1C1CCCCC1')
+    mol4 = read_smiles('C1CC[13CH2]CC1C1CCCCC1')
+    print(mol4.nodes(data=True))
     mol = read_smiles('[Rh-](Cl)(Cl)(Cl)(Cl)$[Rh-](Cl)(Cl)(Cl)Cl')
     mol2 = read_smiles('[15OH1-:4][HoH3]')
+    molx = read_smiles('[O--][13CH2+3][14CH3+2][C@H4][Rh@OH19]')
