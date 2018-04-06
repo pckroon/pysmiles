@@ -13,20 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import networkx as nx
 import enum
 import re
 import operator
 
+import networkx as nx
+
 ISOTOPE_PATTERN = r'(?P<isotope>[\d]+)?'
 ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|\*|[A-Z][a-z]{0,2})'
 STEREO_PATTERN = r'(?P<stereo>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
-                  '@TB[\d]{1,2})?'
+                  r'@TB[\d]{1,2})?'
 HCOUNT_PATTERN = r'(?P<hcount>H[\d]?)?'
 CHARGE_PATTERN = r'(?P<charge>--|\+\+|-[\d]{0,2}|\+[\d]{0,2})?'
 CLASS_PATTERN = r'(?::(?P<class>[\d]+))?'
-ATOM_PATTERN = re.compile(ISOTOPE_PATTERN + ELEMENT_PATTERN + STEREO_PATTERN +
-                          HCOUNT_PATTERN + CHARGE_PATTERN + CLASS_PATTERN)
+ATOM_PATTERN = re.compile('^' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
+                          STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
+                          CLASS_PATTERN + '$')
 
 VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
             "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
@@ -110,7 +112,7 @@ def parse_atom(atom):
         else:
             return {}
     atom = atom.strip('[]')
-    match = ATOM_PATTERN.fullmatch(atom)
+    match = ATOM_PATTERN.match(atom)
     if match is None:
         raise ValueError('The atom {} is malformatted'.format(atom))
     out = match.groupdict()
@@ -272,10 +274,10 @@ def aromatize_bonds(mol):
     for cycle in nx.cycle_basis(mol):
         # If all elements in cycle are lowercase (or missing, *) it's aromatic
         if all(elements.get(n_idx, 'x').islower() for n_idx in cycle):
-            for u, v in mol.edges(nbunch=cycle):
-                if not (u in cycle and v in cycle):
+            for idx, jdx in mol.edges(nbunch=cycle):
+                if not (idx in cycle and jdx in cycle):
                     continue
-                mol.edges[u, v]['order'] = 1.5
+                mol.edges[idx, jdx]['order'] = 1.5
             for n_idx in cycle:
                 mol.nodes[n_idx]['element'] = mol.nodes[n_idx]['element'].upper()
 
@@ -372,19 +374,3 @@ def read_smiles(smiles, explicit_H=True):
     else:
         remove_hydrogens(mol)
     return mol
-
-
-if __name__ == '__main__':
-    example = 'OCC(CCC)C(C(C)C)CCC'
-    mol = read_smiles(example)
-    mol = read_smiles('c1ccccc1')
-    mol = read_smiles('C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C))))))))))))))))))))C')
-    mol = read_smiles('N1CC2CCCC2CC1')
-    mol = read_smiles('C%25CCCCC%25')
-    mol3 = read_smiles('C1CCCCC1C1CCCCC1')
-    mol4 = read_smiles('C1CC[13CH2]CC1C1CCCCC1', False)
-    print(mol4.nodes(data=True))
-    mol = read_smiles('[Rh-](Cl)(Cl)(Cl)(Cl)$[Rh-](Cl)(Cl)(Cl)Cl')
-    mol2 = read_smiles('[15OH1-:4][HoH3]')
-    molx = read_smiles('[O--][13CH2+3][14CH3+2][C@H4][Rh@OH19]')
-    spiro = read_smiles('C12(CCCCC1)CC([H])CCC2*', False)
