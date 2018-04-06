@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/pckroon/pysmiles.svg?branch=master)](https://travis-ci.org/pckroon/pysmiles)
+
 # pysmiles: The lightweight and pure-python SMILES reader and writer
 
 This is a small project I started because I couldn't find any SMILES reader or
@@ -61,10 +63,10 @@ print(write_smiles(mol))
 - The writer produces non-recommended SMILES strings (as per OpenSmiles). In
     addition, it doesn't use the 'hcount' and valence to determine bond orders.
 - There is currently no way of specifying stereochemical information. The parser
-can deal with it, but it will be discarded.
-- There are no tests.
-- It is not pip-installable
-- It only reads SMILES. This might later be extended to e.g. InChi, SLN, etc.
+    can deal with it (except for E/Z), but it will be discarded.
+- There are not enough tests.
+- It is not on PyPI
+- It only process SMILES. This might later be extended to e.g. InChi, SLN, etc.
 
 ## Requirements
 - [networkx][networkx]
