@@ -133,6 +133,8 @@ def parse_atom(atom):
             out['hcount'] = 1
         else:
             out['hcount'] = int(hcount[1:])
+        if out.get('element') == 'H':
+            raise ValueError("a hydrogen atom can't have hydrogens")
     else:
         out['hcount'] = 0
     if 'stereo' in out:
@@ -173,11 +175,14 @@ def add_hydrogens(mol):
     None
         `mol` is modified in-place.
     """
+    H_atom = parse_atom('[H]')
+    if 'hcount' in H_atom:
+        del H_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
         idxs = range(max(mol) + 1, max(mol) + hcount + 1)
         # Get the defaults from parse_atom.
-        mol.add_nodes_from(idxs, **parse_atom('[H]'))
+        mol.add_nodes_from(idxs, **H_atom.copy())
         mol.add_edges_from([(n_idx, jdx) for jdx in idxs], order=1)
         if 'hcount' in mol.nodes[n_idx]:
             del mol.nodes[n_idx]['hcount']
@@ -238,7 +243,10 @@ def fill_valence(mol):
         bond_orders = map(operator.itemgetter(2),
                           mol.edges(nbunch=n_idx, data='order', default=0))
         bonds = sum(bond_orders)
-        val = min(filter(lambda a: a >= bonds, val))
+        try:
+            val = min(filter(lambda a: a >= bonds, val))
+        except ValueError:  # More bonds than possible
+            val = max(val)
 
         if val - bonds > 0:
             node['hcount'] = int(val - bonds)
@@ -342,14 +350,24 @@ def read_smiles(smiles, explicit_H=True):
                     raise ValueError('Conflicting bond orders for ring '
                                      'between indices {}'.format(token))
                 # idx is the index of the *next* atom we're adding. So: -1.
+                if mol.has_edge(idx-1, jdx):
+                    raise ValueError('Edge specified by marker {} already '
+                                     'exists'.format(token))
+                elif idx-1 == jdx:
+                    raise ValueError('Marker {} specifies a bond between an '
+                                     'atom and itself'.format(token))
                 mol.add_edge(idx - 1, jdx, order=next_bond)
                 next_bond = None
                 del ring_nums[token]
             else:
+                if idx == 0:
+                    raise ValueError("Can't have a marker ({}) before an atom"
+                                     "".format(token))
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
-
+    if ring_nums:
+        raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
     # Time to deal with aromaticity
     aromatize_bonds(mol)
 
@@ -371,7 +389,7 @@ if __name__ == '__main__':
     mol = read_smiles('N1CC2CCCC2CC1')
     mol = read_smiles('C%25CCCCC%25')
     mol3 = read_smiles('C1CCCCC1C1CCCCC1')
-    mol4 = read_smiles('C1CC[13CH2]CC1C1CCCCC1')
+    mol4 = read_smiles('C1CC[13CH2]CC1C1CCCCC1', False)
     print(mol4.nodes(data=True))
     mol = read_smiles('[Rh-](Cl)(Cl)(Cl)(Cl)$[Rh-](Cl)(Cl)(Cl)Cl')
     mol2 = read_smiles('[15OH1-:4][HoH3]')
