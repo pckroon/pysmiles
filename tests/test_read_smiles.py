@@ -455,11 +455,13 @@ class Tests(unittest.TestCase):
         smiles = 'F/C=C/F', 'C(\F)=C/F', 'F\C=C/F', 'C(/F)=C/F'
         for smile in smiles:
             read_smiles(smiles, explicit_H=False)
+            self.fail()
 
     @unittest.expectedFailure
     def test_extended_stereo(self):
         smiles = 'NC(Br)=[C@]=C(O)C'
         read_smiles(smiles)
+        self.fail()
 
     def test_wrong_cycle(self):
         smiles = 'c1ccccc2'
