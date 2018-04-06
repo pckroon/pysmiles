@@ -33,7 +33,14 @@ ATOM_PATTERN = re.compile('^' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
 VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
             "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
 
-TokenType = enum.Enum('TokenType', 'ATOM BOND_TYPE BRANCH_START BRANCH_END RING_NUM')
+
+@enum.unique
+class TokenType(enum.Enum):
+    ATOM = 1
+    BOND_TYPE = 2
+    BRANCH_START = 3
+    BRANCH_END = 4
+    RING_NUM = 5
 
 
 def tokenize(smiles):
@@ -81,7 +88,9 @@ def tokenize(smiles):
         elif char == ')':
             yield TokenType.BRANCH_END, ')'
         elif char == '%':
-            yield TokenType.RING_NUM, int(next(smiles) + next(smiles))
+            # If smiles is too short this will raise a ValueError, which is
+            # (slightly) prettier than a StopIteration.
+            yield TokenType.RING_NUM, int(next(smiles, '') + next(smiles, ''))
         elif char.isdigit():
             yield TokenType.RING_NUM, int(char)
 

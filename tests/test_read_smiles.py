@@ -450,6 +450,17 @@ class Tests(unittest.TestCase):
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
+    @unittest.expectedFailure
+    def test_cis_trans(self):
+        smiles = 'F/C=C/F', 'C(\F)=C/F', 'F\C=C/F', 'C(/F)=C/F'
+        for smile in smiles:
+            read_smiles(smiles, explicit_H=False)
+
+    @unittest.expectedFailure
+    def test_extended_stereo(self):
+        smiles = 'NC(Br)=[C@]=C(O)C'
+        read_smiles(smiles)
+
     def test_wrong_cycle(self):
         smiles = 'c1ccccc2'
         with self.assertRaises(KeyError):
