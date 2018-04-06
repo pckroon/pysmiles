@@ -31,14 +31,7 @@ ATOM_PATTERN = re.compile(ISOTOPE_PATTERN + ELEMENT_PATTERN + STEREO_PATTERN +
 VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
             "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
 
-
-class TokenType(enum.Enum):
-    """Helper class defining the types of tokens possible in a SMILES string"""
-    ATOM = enum.auto()
-    BOND_TYPE = enum.auto()
-    BRANCH_START = enum.auto()
-    BRANCH_END = enum.auto()
-    RING_NUM = enum.auto()
+TokenType = enum.Enum('TokenType', 'ATOM BOND_TYPE BRANCH_START BRANCH_END RING_NUM')
 
 
 def tokenize(smiles):
