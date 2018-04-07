@@ -62,10 +62,9 @@ def tokenize(smiles):
     token = ''
     peek = None
     while True:
-        try:
-            char = peek if peek else next(smiles)
-            peek = None
-        except StopIteration:
+        char = peek if peek else next(smiles, '')
+        peek = None
+        if not char:
             break
         if char == '[':
             token = char
