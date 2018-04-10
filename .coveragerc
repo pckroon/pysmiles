@@ -1,4 +1,2 @@
 [run]
-branch = True
-source = pysmiles
 omit = */test/*
