@@ -13,7 +13,7 @@ matrix:
         - python: "2.7"
         - python: "3.7-dev"
 install:
-    - pip install --upgrade pylint pytest coveralls pytest-cov
+    - pip install --upgrade pylint pytest coveralls[yaml] pytest-cov
     - pip install --upgrade .
 before_script:
     - pytest --version
