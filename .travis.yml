@@ -13,9 +13,11 @@ matrix:
         - python: "2.7"
         - python: "3.7-dev"
 install:
-    - pip install --upgrade pylint pytest pytest-cov
+    - pip install --upgrade pylint pytest python-coveralls
     - pip install --upgrade .
 script:
-    - pytest -vv --cov=pysmiles --cov-report=term-missing
+    - pytest -vv --cov --cov-report=term-missing
 after_script:
     - pylint pysmiles
+after_success:
+    - coveralls
