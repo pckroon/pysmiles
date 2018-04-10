@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/pckroon/pysmiles.svg?branch=master)](https://travis-ci.org/pckroon/pysmiles)
+[![Coverage Status](https://coveralls.io/repos/github/pckroon/pysmiles/badge.svg)](https://coveralls.io/github/pckroon/pysmiles)
 
 # pysmiles: The lightweight and pure-python SMILES reader and writer
 
