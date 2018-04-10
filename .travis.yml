@@ -1,24 +1,24 @@
 language: python
 cache: pip
 python:
-#    - "2.7"
-#    - "3.4"
-#    - "3.5"
-#    - "3.5-dev"
+    - "2.7"
+    - "3.4"
+    - "3.5"
+    - "3.5-dev"
     - "3.6"
-#    - "3.6-dev"
-#    - "3.7-dev"
-#matrix:
-#    allow_failures:
-#        - python: "2.7"
-#        - python: "3.7-dev"
+    - "3.6-dev"
+    - "3.7-dev"
+matrix:
+    allow_failures:
+        - python: "2.7"
+        - python: "3.7-dev"
 install:
-    - pip install --upgrade pylint pytest python-coveralls pytest-cov
+    - pip install --upgrade pylint pytest coveralls pytest-cov
     - pip install --upgrade .
 before_script:
     - pytest --version
 script:
-    - pytest -vv --cov --cov-report=term-missing
+    - pytest -vv --cov
 after_script:
     - pylint pysmiles
 after_success:

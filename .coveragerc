@@ -1,4 +1,7 @@
 [run]
 branch = True
-omit = */test/*
 source = pysmiles
+omit = */tests/*
+
+[report]
+show_missing = True
