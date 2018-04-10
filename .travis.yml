@@ -18,7 +18,7 @@ install:
 before_script:
     - pytest --version
 script:
-    - pytest -vv --cov= --cov-report=term-missing
+    - pytest -vv --cov --cov-report=term-missing
 after_script:
     - pylint pysmiles
 after_success:
