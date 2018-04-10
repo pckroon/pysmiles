@@ -260,6 +260,51 @@ class Tests(unittest.TestCase):
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
+        
+        smiles = 'c1ccc2ccccc2c1'
+        found = read_smiles(smiles)
+        
+        expected = nx.Graph()
+        data = [(0, 1, {'order': 1.5}),
+                (0, 9, {'order': 1.5}),
+                (0, 10, {'order': 1}),
+                (1, 2, {'order': 1.5}),
+                (1, 11, {'order': 1}),
+                (2, 3, {'order': 1.5}),
+                (2, 12, {'order': 1}),
+                (3, 4, {'order': 1.5}),
+                (3, 8, {'order': 1.5}),
+                (4, 5, {'order': 1.5}),
+                (4, 13, {'order': 1}),
+                (5, 6, {'order': 1.5}),
+                (5, 14, {'order': 1}),
+                (6, 7, {'order': 1.5}),
+                (6, 15, {'order': 1}),
+                (7, 8, {'order': 1.5}),
+                (7, 16, {'order': 1}),
+                (8, 9, {'order': 1.5}),
+                (9, 17, {'order': 1})]
+        expected.add_edges_from(data)
+        data = {0: {'charge': 0, 'element': 'C'},
+                1: {'charge': 0, 'element': 'C'},
+                2: {'charge': 0, 'element': 'C'},
+                3: {'charge': 0, 'element': 'C'},
+                4: {'charge': 0, 'element': 'C'},
+                5: {'charge': 0, 'element': 'C'},
+                6: {'charge': 0, 'element': 'C'},
+                7: {'charge': 0, 'element': 'C'},
+                8: {'charge': 0, 'element': 'C'},
+                9: {'charge': 0, 'element': 'C'},
+                10: {'charge': 0, 'element': 'H'},
+                11: {'charge': 0, 'element': 'H'},
+                12: {'charge': 0, 'element': 'H'},
+                13: {'charge': 0, 'element': 'H'},
+                14: {'charge': 0, 'element': 'H'},
+                15: {'charge': 0, 'element': 'H'},
+                16: {'charge': 0, 'element': 'H'},
+                17: {'charge': 0, 'element': 'H'}}
+        nx.set_node_attributes(expected, data)
+        self.assertEqualGraphs(found, expected)
 
     def test_spiro(self):
         smiles = 'C12(CCCCC1)CCCCC2'
@@ -363,6 +408,34 @@ class Tests(unittest.TestCase):
                 1: {'charge': 0, 'element': 'C', 'hcount': 2}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
+
+        smiles = '*'
+        found = read_smiles(smiles)
+        expected = nx.Graph()
+        expected.add_node(0)
+        self.assertEqualGraphs(found, expected)
+
+        smiles = '[*--]'
+        found = read_smiles(smiles)
+        expected = nx.Graph()
+        expected.add_node(0, charge=-2)
+        self.assertEqualGraphs(found, expected)
+
+        smiles = '[*-]'
+        found = read_smiles(smiles)
+        expected = nx.Graph()
+        expected.add_node(0, charge=-1)
+        self.assertEqualGraphs(found, expected)
+
+        smiles = '[H+]'
+        found = read_smiles(smiles)
+        expected = nx.Graph()
+        expected.add_node(0, charge=+1, element='H')
+        self.assertEqualGraphs(found, expected)
+
+        smiles = '[CL-]'
+        with self.assertRaises(ValueError):
+            read_smiles(smiles)
 
         smiles = '[HH]'
         with self.assertRaises(ValueError):
