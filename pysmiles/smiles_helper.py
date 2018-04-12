@@ -23,7 +23,7 @@ ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|\*|[A-Z][a-z]{0,2})'
 STEREO_PATTERN = r'(?P<stereo>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
                   r'@TB[\d]{1,2})?'
 HCOUNT_PATTERN = r'(?P<hcount>H[\d]?)?'
-CHARGE_PATTERN = r'(?P<charge>--|\+\+|-[\d]{0,2}|\+[\d]{0,2})?'
+CHARGE_PATTERN = r'(?P<charge>(-|\+)(\++|-+|[\d]{1,2})?)?'
 CLASS_PATTERN = r'(?::(?P<class>[\d]+))?'
 ATOM_PATTERN = re.compile('^' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
                           STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
@@ -55,53 +55,85 @@ def parse_atom(atom):
         A dictionary containing at least 'element' and 'charge'. If present,
         will also contain 'hcount', 'isotope', and 'class'.
     """
+    defaults = {'charge': 0, 'hcount': 0}
     if not atom.startswith('[') and not atom.endswith(']'):
         if atom != '*':
             return {'element': atom, 'charge': 0}
         else:
-            return {'charge': 0, 'hcount': 0}
+            return defaults.copy()
     atom = atom.strip('[]')
     match = ATOM_PATTERN.match(atom)
     if match is None:
         raise ValueError('The atom {} is malformatted'.format(atom))
-    out = match.groupdict()
-    out = {k: v for k, v in out.items() if v is not None}
-    
-    if 'isotope' in out:
-        out['isotope'] = int(out['isotope'])
+    out = defaults.copy()
+    out.update({k: v for k, v in match.groupdict().items() if v is not None})
+
+    parse_helpers = {'isotope': int,
+                     'element': lambda x: x,
+                     'stereo': lambda x: x,
+                     'hcount': parse_hcount,
+                     'charge': parse_charge,
+                     'class': int}
+
+    for attr, val_str in out.items():
+        out[attr] = parse_helpers[attr](val_str)
+
     if out['element'] == '*':
         del out['element']
-    if 'hcount' in out:
-        # Starts with H
-        hcount = out['hcount']
-        if hcount == 'H':
-            out['hcount'] = 1
-        else:
-            out['hcount'] = int(hcount[1:])
-        if out.get('element') == 'H':
-            raise ValueError("a hydrogen atom can't have hydrogens")
-    else:
-        out['hcount'] = 0
+
+    if out.get('element') == 'H' and out.get('hcount', 0):
+        raise ValueError("A hydrogen atom can't have hydrogens")
+
     if 'stereo' in out:
         print("I don't quite know how to handle stereo yet...")
-    if 'charge' in out:
-        charge = out['charge']
-        if charge == '--':
-            charge = -2
-        elif charge == '++':
-            charge = +2
-        elif charge == '-':
-            charge = -1
-        elif charge == '+':
-            charge = +1
-        else:
-            charge = int(charge)
-        out['charge'] = charge
-    else:
-        out['charge'] = 0
-    if 'class' in out:
-        out['class'] = int(out['class'])
+
     return out
+
+
+def parse_hcount(hcount_str):
+    """
+    Parses a SMILES hydrogen count specifications.
+
+    Parameters
+    ----------
+    hcount_str : str
+        The hydrogen count specification to parse.
+
+    Returns
+    -------
+    int
+        The number of hydrogens specified.
+    """
+    if not hcount_str:
+        return 0
+    if hcount_str == 'H':
+        return 1
+    return int(hcount_str[1:])
+
+
+def parse_charge(charge_str):
+    """
+    Parses a SMILES charge specification.
+
+    Parameters
+    ----------
+    charge_str : str
+        The charge specification to parse.
+
+    Returns
+    -------
+    int
+        The charge.
+    """
+    if not charge_str:
+        return 0
+    signs = {'-': -1, '+': 1}
+    sign = signs[charge_str[0]]
+    if len(charge_str) > 1 and charge_str[1].isdigit():
+        charge = sign * int(charge_str[1:])
+    else:
+        charge = sign * charge_str.count(charge_str[0])
+    return charge
 
 
 def add_hydrogens(mol):
@@ -120,14 +152,14 @@ def add_hydrogens(mol):
     None
         `mol` is modified in-place.
     """
-    H_atom = parse_atom('[H]')
-    if 'hcount' in H_atom:
-        del H_atom['hcount']
+    h_atom = parse_atom('[H]')
+    if 'hcount' in h_atom:
+        del h_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
         idxs = range(max(mol) + 1, max(mol) + hcount + 1)
         # Get the defaults from parse_atom.
-        mol.add_nodes_from(idxs, **H_atom.copy())
+        mol.add_nodes_from(idxs, **h_atom.copy())
         mol.add_edges_from([(n_idx, jdx) for jdx in idxs], order=1)
         if 'hcount' in mol.nodes[n_idx]:
             del mol.nodes[n_idx]['hcount']
@@ -181,39 +213,48 @@ def fill_valence(mol):
     """
     for n_idx in mol:
         node = mol.nodes[n_idx]
-        element = node.get('element')
-        if element not in VALENCES or 'hcount' in node:
-            continue
-        val = VALENCES.get(element)
-        bond_orders = map(operator.itemgetter(2),
-                          mol.edges(nbunch=n_idx, data='order', default=0))
-        bonds = sum(bond_orders)
-        try:
-            val = min(filter(lambda a: a >= bonds, val))
-        except ValueError:  # More bonds than possible
-            val = max(val)
-
-        if val - bonds > 0:
-            node['hcount'] = int(val - bonds)
-        else:
-            node['hcount'] = 0
+        missing = under_valence(mol, n_idx)
+        node['hcount'] = missing
 
 
 def under_valence(mol, node_idx, use_order=True):
+    """
+    Returns how much the specified node is under valence. If use_order is
+    False, treat all bonds as if they are order 1. Returns `hcount` if it is
+    set for the node.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    use_order : bool
+        If False, treat all bonds as single.
+
+    Returns
+    -------
+    int
+        The number of missing bonds.
+    """
     node = mol.nodes[node_idx]
+    if 'hcount' in node:
+        return node['hcount']
     element = node.get('element')
     if element not in VALENCES:
         return 0
     val = VALENCES.get(element)
-    bond_orders = map(operator.itemgetter(2),
-                      mol.edges(nbunch=node_idx, data='order', default=0))
+    if use_order:
+        bond_orders = map(operator.itemgetter(2),
+                          mol.edges(nbunch=node_idx, data='order', default=0))
+    else:
+        bond_orders = len(mol[node_idx])
     bonds = sum(bond_orders)
     bonds += node.get('hcount', 0)
     try:
         val = min(filter(lambda a: a >= bonds, val))
     except ValueError:  # More bonds than possible
         val = max(val)
-
     return max(int(val - bonds), 0)
 
 
@@ -221,8 +262,19 @@ def mark_aromatic_atoms(mol):
     """
     Sets the elements of all aromatic atoms in mol (according to Hückel's rule)
     to lowercase. Requires that the 'hcount' on atoms is correct.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        `mol` is modified in-place.
     """
     # Only cycles can be aromiatic
+    aromatic = set()
     for cycle in nx.cycle_basis(mol):
         electrons = 0
         maybe_aromatic = True
@@ -230,21 +282,69 @@ def mark_aromatic_atoms(mol):
             if idx in cycle and jdx in cycle:
                 electrons += (order - 1) * 2
         for node_idx in cycle:
-            element = mol.nodes[node_idx]['element'].capitalize()
-            hcount = mol.nodes[node_idx].get('hcount', 0)
+            node = mol.nodes[node_idx]
+            element = node['element'].capitalize()
+            hcount = node.get('hcount', 0)
             degree = mol.degree(node_idx) + hcount
             if element not in AROMATIC_ATOMS or degree not in (2, 3):
                 maybe_aromatic = False
                 break
-            missing = under_valence(mol, node_idx)
             # missing cases:
-            #   charged atoms
             #   extracyclic sp2 heteroatom (e.g. =O)
+            #   some charged cases
             if element in 'N P As'.split() and hcount == 1:
                 electrons += 1
             elif element in 'O S Se'.split():
                 electrons += 1
+            if node['charge'] == +1 and not (element == 'C' and hcount == 0):
+                electrons -= 1
         if maybe_aromatic and int(electrons) % 2 == 0:
-            print('Aromatic')
+            # definitely (anti) aromatic
+            aromatic.update(cycle)
+    for node_idx in mol:
+        node = mol.nodes[node_idx]
+        if node_idx not in aromatic:
+            node['element'] = node['element'].capitalize()
         else:
-            print('Not aromatic')
+            node['element'] = node['element'].lower()
+
+
+def mark_aromatic_edges(mol):
+    """
+    Set all bonds between aromatic atoms (lowercase elements) to 1.5. Run
+    `mark_aromatic_atoms` first.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        `mol` is modified in-place.
+    """
+    for idx, jdx in mol.edges:
+        if mol.nodes[idx]['element'].islower() and\
+              mol.nodes[jdx]['element'].islower():
+            mol.edges[idx, jdx]['order'] = 1.5
+
+
+def fix_aromatic(mol):
+    """
+    Sets hcount for all atoms, the element of all aromatic atoms to lowercase,
+    and the order of all aromatic bonds to 1.5.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        `mol` is modified in-place.
+    """
+    fill_valence(mol)
+    mark_aromatic_atoms(mol)
+    mark_aromatic_edges(mol)

@@ -260,10 +260,10 @@ class Tests(unittest.TestCase):
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
-        
+
         smiles = 'c1ccc2ccccc2c1'
         found = read_smiles(smiles)
-        
+
         expected = nx.Graph()
         data = [(0, 1, {'order': 1.5}),
                 (0, 9, {'order': 1.5}),
@@ -412,7 +412,7 @@ class Tests(unittest.TestCase):
         smiles = '*'
         found = read_smiles(smiles)
         expected = nx.Graph()
-        expected.add_node(0)
+        expected.add_node(0, charge=0)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[*--]'
