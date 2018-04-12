@@ -13,16 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import networkx as nx
 from collections import defaultdict
 
+import networkx as nx
 
-def remove_nodes(molecule, attribute, values):
-    to_remove = set()
-    for node_key in molecule:
-        if molecule.nodes[node_key][attribute] in values:
-            to_remove.add(node_key)
-    molecule.remove_nodes_from(to_remove)
+from .smiles_helper import remove_hydrogens, fill_valence
 
 
 def write_smiles(molecule, default_element='C', start=None):
@@ -30,7 +25,8 @@ def write_smiles(molecule, default_element='C', start=None):
         start = min(molecule.nodes)
 
     molecule = molecule.copy()
-    remove_nodes(molecule, attribute='element', values='H')
+    remove_hydrogens(molecule)
+    fill_valence(molecule)
 
     def get_symbol(node_key):
         name = molecule.nodes[node_key].get('element', default_element)
@@ -119,35 +115,3 @@ def write_smiles(molecule, default_element='C', start=None):
 
     smiles += ')' * branch_depth
     return smiles
-
-
-if __name__ == '__main__':
-    mol = nx.Graph()
-    mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4)])
-    for idx, ele in enumerate('CCOCC'):
-        mol.nodes[idx]['element'] = ele
-    mol.edges[1, 2]['order'] = 2
-    print(write_smiles(mol))
-
-    mol = nx.cycle_graph(6)
-    mol.add_edge(3, 6)
-    for node_key in mol:
-        mol.nodes[node_key]['element'] = 'C'
-    mol.nodes[6]['element'] = 'O'
-    for edge in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)]:
-        mol.edges[edge]['order'] = 1.5
-    print(write_smiles(mol))
-
-    mol = nx.Graph()
-    mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4), (1, 5)])
-    for idx, ele in enumerate('ABCDEF'):
-        mol.nodes[idx]['element'] = ele
-    print(write_smiles(mol))
-
-    mol = nx.Graph()
-    mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4), (1, 5), (3, 6)])
-    for idx, ele in enumerate('CCCCOCO'):
-        mol.nodes[idx]['element'] = ele
-    mol.nodes[4]['charge'] = -1
-    mol.edges[3, 6]['order'] = 2
-    print(write_smiles(mol))
