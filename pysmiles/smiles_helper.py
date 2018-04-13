@@ -194,7 +194,7 @@ def remove_hydrogens(mol):
     mol.remove_nodes_from(to_remove)
 
 
-def fill_valence(mol):
+def fill_valence(mol, respect_hcount=True):
     """
     Sets the attribute 'hcount' on all nodes in `mol` that don't have it yet.
     The value to which it is set is based on the node's 'element', and the
@@ -205,6 +205,8 @@ def fill_valence(mol):
     ----------
     mol : nx.Graph
         The molecule whose nodes should get a 'hcount'. Is modified in-place.
+    respect_hcount : bool
+        If True, don't change the hcount on nodes that already have it set.
 
     Returns
     -------
@@ -213,6 +215,8 @@ def fill_valence(mol):
     """
     for n_idx in mol:
         node = mol.nodes[n_idx]
+        if 'hcount' in node and respect_hcount:
+            continue
         missing = under_valence(mol, n_idx)
         node['hcount'] = missing
 
@@ -238,18 +242,17 @@ def under_valence(mol, node_idx, use_order=True):
         The number of missing bonds.
     """
     node = mol.nodes[node_idx]
-    if 'hcount' in node:
-        return node['hcount']
     element = node.get('element')
     if element not in VALENCES:
         return 0
     val = VALENCES.get(element)
     if use_order:
         bond_orders = map(operator.itemgetter(2),
-                          mol.edges(nbunch=node_idx, data='order', default=0))
+                          mol.edges(nbunch=node_idx, data='order', default=1))
         bonds = sum(bond_orders)
     else:
         bonds = len(mol[node_idx])
+    bonds += node.get('hcount', 0)
     try:
         val = min(filter(lambda a: a >= bonds, val))
     except ValueError:  # More bonds than possible
@@ -323,10 +326,13 @@ def mark_aromatic_edges(mol):
     None
         `mol` is modified in-place.
     """
-    for idx, jdx in mol.edges:
-        if mol.nodes[idx]['element'].islower() and\
-              mol.nodes[jdx]['element'].islower():
-            mol.edges[idx, jdx]['order'] = 1.5
+    for cycle in nx.cycle_basis(mol):
+        for idx, jdx in mol.edges:
+            if idx not in cycle or jdx not in cycle:
+                continue
+            if mol.nodes[idx]['element'].islower() and\
+                  mol.nodes[jdx]['element'].islower():
+                mol.edges[idx, jdx]['order'] = 1.5
 
 
 def fix_aromatic(mol):
@@ -347,3 +353,37 @@ def fix_aromatic(mol):
     fill_valence(mol)
     mark_aromatic_atoms(mol)
     mark_aromatic_edges(mol)
+
+
+def increment_bond_orders(molecule):
+    """
+    Increments bond orders up to what the atom's valence allows.
+
+    Parameters
+    ----------
+    molecule : nx.Graph
+        The molecule to process.
+
+    Returns
+    -------
+    None
+        molecule is modified in-place.
+    """
+    max_bond_order = 3
+    # Gather the number of open spots for all atoms beforehand, since some
+    # might have multiple oxidation states (e.g. S). We don't want to change
+    # oxidation state halfway through for some funny reason. It shouln't be
+    # nescessary, but it can't hurt.
+    missing_bonds = {}
+    for idx in molecule:
+        missing_bonds[idx] = under_valence(molecule, idx)
+
+    for idx, jdx in molecule.edges:
+        missing_idx = missing_bonds[idx]
+        missing_jdx = missing_bonds[jdx]
+        edge_missing = min(missing_idx, missing_jdx)
+        new_order = edge_missing + molecule.edges[idx, jdx].get("order", 1)
+        new_order = min(new_order, max_bond_order)
+        molecule.edges[idx, jdx]['order'] = new_order
+        missing_bonds[idx] -= edge_missing
+        missing_bonds[jdx] -= edge_missing

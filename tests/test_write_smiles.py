@@ -20,9 +20,11 @@ from pysmiles.smiles_helper import mark_aromatic_atoms
 
 mol = nx.Graph()
 mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4)], order=1)
-for idx, ele in enumerate('CCOCC'):
+for idx, (ele, count) in enumerate(zip('CCOCC', (3, 0, 0, 2, 3))):
     mol.nodes[idx]['element'] = ele
+#    mol.nodes[idx]['hcount'] = count
 mol.edges[1, 2]['order'] = 2
+
 print(write_smiles(mol))
 
 mol = nx.cycle_graph(6)
@@ -46,4 +48,14 @@ for idx, ele in enumerate('CCCCOCO'):
     mol.nodes[idx]['element'] = ele
 mol.nodes[4]['charge'] = -1
 mol.edges[3, 6]['order'] = 2
+print(write_smiles(mol))
+
+mol = nx.Graph()
+mol.add_cycle(range(6), order=1.5)
+mol.add_cycle(range(6, 12), order=1.5)
+mol.add_edge(5, 7, order=1)
+for n_idx in mol:
+    mol.nodes[n_idx]['element'] = 'C'
+
+print(mol.edges(data=True))
 print(write_smiles(mol))

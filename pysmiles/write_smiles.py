@@ -20,12 +20,20 @@ import networkx as nx
 from .smiles_helper import remove_hydrogens, fix_aromatic
 
 
+def get_ring_marker(used_markers):
+    new_marker = 1
+    while new_marker in used_markers:
+        new_marker += 1
+    return new_marker
+
+
 def write_smiles(molecule, default_element='*', start=None):
     if start is None:
         start = min(molecule.nodes)
 
     molecule = molecule.copy()
     remove_hydrogens(molecule)
+#    increment_bond_orders(molecule)
     fix_aromatic(molecule)
 
     def get_symbol(node_key):
@@ -56,7 +64,7 @@ def write_smiles(molecule, default_element='*', start=None):
                                                           charge=chargestr,
                                                           class_=class_)
 
-    order_to_symbol = {0: '.', 1: '', 1.5: '', 2: '=', 3: '#', 4: '$'}
+    order_to_symbol = {0: '.', 1: '-', 1.5: ':', 2: '=', 3: '#', 4: '$'}
 
     dfs_successors = nx.dfs_successors(molecule)
     predecessors = defaultdict(list)
@@ -72,13 +80,13 @@ def write_smiles(molecule, default_element='*', start=None):
     total_edges = set(map(frozenset, molecule.edges))
     ring_edges = total_edges - edges
 
-    ring_markers = {}
-    marker_to_bond = {}
-    for marker, (u, v) in enumerate(ring_edges, 1):
-        marker = str(marker) if marker < 10 else '%{}'.format(marker)
-        ring_markers[u] = marker
-        ring_markers[v] = marker
-        marker_to_bond[marker] = (u, v)
+    atom_to_ring_idx = {}
+    ring_idx_to_bond = {}
+    ring_idx_to_marker = {}
+    for ring_idx, (u, v) in enumerate(ring_edges, 1):
+        atom_to_ring_idx[u] = ring_idx
+        atom_to_ring_idx[v] = ring_idx
+        ring_idx_to_bond[ring_idx] = (u, v)
     branch_depth = 0
     branches = set()
     to_visit = [start]
@@ -96,14 +104,32 @@ def write_smiles(molecule, default_element='*', start=None):
             assert len(previous) == 1
             previous = previous[0]
             order = molecule.edges[previous, current].get('order', 1)
-            smiles += order_to_symbol[order]
+            aromatic_atoms = molecule.nodes[current]['element'].islower() and\
+                             molecule.nodes[previous]['element'].islower()
+            aromatic_bond = aromatic_atoms and order == 1.5
+            cross_aromatic = aromatic_atoms and order == 1
+            single_bond = order == 1
+            if cross_aromatic or not (aromatic_bond or single_bond):
+                smiles += order_to_symbol[order]
         smiles += get_symbol(current)
-        if current in ring_markers:
-            marker = ring_markers[current]
-            ring_bond = marker_to_bond[marker]
+        if current in atom_to_ring_idx:
+            ring_idx = atom_to_ring_idx[current]
+            ring_bond = ring_idx_to_bond[ring_idx]
+            if ring_idx not in ring_idx_to_marker:
+                marker = get_ring_marker(ring_idx_to_marker.values())
+                ring_idx_to_marker[ring_idx] = marker
+            else:
+                marker = ring_idx_to_marker.pop(ring_idx)
+
+            idx, jdx = ring_bond
             order = molecule.edges[ring_bond].get('order', 1)
-            smiles += order_to_symbol[order]
-            smiles += marker
+            aromatic_atoms = molecule.nodes[idx]['element'].islower() and\
+                             molecule.nodes[jdx]['element'].islower()
+            aromatic_bond = aromatic_atoms and order == 1.5
+            single_bond = order == 1
+            if not aromatic_bond and not single_bond:
+                smiles += order_to_symbol[order]
+            smiles += str(marker) if marker < 10 else '%{}'.format(marker)
 
         if current in dfs_successors:
             next_nodes = dfs_successors[current]
