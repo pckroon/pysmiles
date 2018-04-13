@@ -17,16 +17,16 @@ from collections import defaultdict
 
 import networkx as nx
 
-from .smiles_helper import remove_hydrogens, fill_valence
+from .smiles_helper import remove_hydrogens, fix_aromatic
 
 
-def write_smiles(molecule, default_element='C', start=None):
+def write_smiles(molecule, default_element='*', start=None):
     if start is None:
         start = min(molecule.nodes)
 
     molecule = molecule.copy()
     remove_hydrogens(molecule)
-    fill_valence(molecule)
+    fix_aromatic(molecule)
 
     def get_symbol(node_key):
         name = molecule.nodes[node_key].get('element', default_element)
@@ -37,7 +37,7 @@ def write_smiles(molecule, default_element='C', start=None):
         if stereo is not None:
             raise NotImplementedError
         if stereo is None and isotope == '' and charge == 0 and\
-                name in ['B', 'C', 'N', 'O', 'P', 'S', 'F', 'Cl', 'Br', 'I']:
+                name in 'B C N O P S F Cl Br I b c n o p s se as'.split():
             return name
         if charge > 0:
             chargestr = '+'
@@ -56,7 +56,7 @@ def write_smiles(molecule, default_element='C', start=None):
                                                           charge=chargestr,
                                                           class_=class_)
 
-    order_to_symbol = {0: '.', 1: '', 1.5: ':', 2: '=', 3: '#', 4: '$'}
+    order_to_symbol = {0: '.', 1: '', 1.5: '', 2: '=', 3: '#', 4: '$'}
 
     dfs_successors = nx.dfs_successors(molecule)
     predecessors = defaultdict(list)

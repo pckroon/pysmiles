@@ -247,10 +247,9 @@ def under_valence(mol, node_idx, use_order=True):
     if use_order:
         bond_orders = map(operator.itemgetter(2),
                           mol.edges(nbunch=node_idx, data='order', default=0))
+        bonds = sum(bond_orders)
     else:
-        bond_orders = len(mol[node_idx])
-    bonds = sum(bond_orders)
-    bonds += node.get('hcount', 0)
+        bonds = len(mol[node_idx])
     try:
         val = min(filter(lambda a: a >= bonds, val))
     except ValueError:  # More bonds than possible
@@ -296,7 +295,7 @@ def mark_aromatic_atoms(mol):
                 electrons += 1
             elif element in 'O S Se'.split():
                 electrons += 1
-            if node['charge'] == +1 and not (element == 'C' and hcount == 0):
+            if node.get('charge', 0) == +1 and not (element == 'C' and hcount == 0):
                 electrons -= 1
         if maybe_aromatic and int(electrons) % 2 == 0:
             # definitely (anti) aromatic
