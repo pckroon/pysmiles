@@ -15,3 +15,5 @@
 
 from .read_smiles import read_smiles
 from .write_smiles import write_smiles
+from .smiles_helper import (fill_valence, add_explicit_hydrogens,
+                            remove_explicit_hydrogens, correct_aromatic_rings)

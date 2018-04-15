@@ -16,16 +16,16 @@
 import networkx as nx
 
 from pysmiles import write_smiles
-from pysmiles.smiles_helper import mark_aromatic_atoms
+from pysmiles.smiles_helper import correct_aromatic_rings, fill_valence
 
-mol = nx.Graph()
-mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4)], order=1)
+mol2 = nx.Graph()
+mol2.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4)], order=1)
 for idx, (ele, count) in enumerate(zip('CCOCC', (3, 0, 0, 2, 3))):
-    mol.nodes[idx]['element'] = ele
-#    mol.nodes[idx]['hcount'] = count
-mol.edges[1, 2]['order'] = 2
+    mol2.nodes[idx]['element'] = ele
+    mol2.nodes[idx]['hcount'] = count
+mol2.edges[1, 2]['order'] = 2
 
-print(write_smiles(mol))
+print(write_smiles(mol2))
 
 mol = nx.cycle_graph(6)
 mol.add_edge(3, 6, order=1)
@@ -34,12 +34,8 @@ for node_key in mol:
 mol.nodes[6]['element'] = 'O'
 for edge in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)]:
     mol.edges[edge]['order'] = 1.5
-print(write_smiles(mol))
-
-mol = nx.Graph()
-mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4), (1, 5)], order=1)
-for idx, ele in enumerate('ABCDEF'):
-    mol.nodes[idx]['element'] = ele
+fill_valence(mol)
+correct_aromatic_rings(mol)
 print(write_smiles(mol))
 
 mol = nx.Graph()
@@ -47,7 +43,10 @@ mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4), (1, 5), (3, 6)], order=1)
 for idx, ele in enumerate('CCCCOCO'):
     mol.nodes[idx]['element'] = ele
 mol.nodes[4]['charge'] = -1
+mol.nodes[4]['hcount'] = 0
 mol.edges[3, 6]['order'] = 2
+fill_valence(mol)
+correct_aromatic_rings(mol)
 print(write_smiles(mol))
 
 mol = nx.Graph()
@@ -56,6 +55,6 @@ mol.add_cycle(range(6, 12), order=1.5)
 mol.add_edge(5, 7, order=1)
 for n_idx in mol:
     mol.nodes[n_idx]['element'] = 'C'
-
-print(mol.edges(data=True))
+fill_valence(mol)
+correct_aromatic_rings(mol)
 print(write_smiles(mol))

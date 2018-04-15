@@ -17,12 +17,13 @@ import enum
 
 import networkx as nx
 
-from .smiles_helper import (add_hydrogens, remove_hydrogens, parse_atom,
-                            fill_valence)
+from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
+                            parse_atom, fill_valence)
 
 
 @enum.unique
 class TokenType(enum.Enum):
+    """Possible SMILES token types"""
     ATOM = 1
     BOND_TYPE = 2
     BRANCH_START = 3
@@ -119,7 +120,7 @@ def aromatize_bonds(mol):
                              " ring. This is impossible")
 
 
-def read_smiles(smiles, explicit_H=True, zero_order_bonds=True):
+def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     """
     Parses a SMILES string.
 
@@ -128,7 +129,7 @@ def read_smiles(smiles, explicit_H=True, zero_order_bonds=True):
     smiles : iterable
         The SMILES string to parse. Should conform to the OpenSMILES
         specification.
-    explicit_H : bool
+    explicit_hydrogen : bool
         Whether hydrogens should be explicit nodes in the outout graph, or be
         implicit in 'hcount' attributes.
 
@@ -136,8 +137,8 @@ def read_smiles(smiles, explicit_H=True, zero_order_bonds=True):
     -------
     nx.Graph
         A graph describing a molecule. Nodes will have an 'element' and a
-        'charge', and if `explicit_H` is False a 'hcount'. Depending on the
-        input, they will also have 'isotope' and 'class' information.
+        'charge', and if `explicit_hydrogen` is False a 'hcount'. Depending on
+        the input, they will also have 'isotope' and 'class' information.
         Edges will have an 'order'.
     """
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
@@ -206,8 +207,8 @@ def read_smiles(smiles, explicit_H=True, zero_order_bonds=True):
     # Add Hydrogens
     fill_valence(mol)
 
-    if explicit_H:
-        add_hydrogens(mol)
+    if explicit_hydrogen:
+        add_explicit_hydrogens(mol)
     else:
-        remove_hydrogens(mol)
+        remove_explicit_hydrogens(mol)
     return mol
