@@ -258,7 +258,8 @@ def remove_explicit_hydrogens(mol):
     mol.remove_nodes_from(to_remove)
 
 
-def fill_valence(mol, respect_hcount=True, respect_bond_order=True):
+def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
+                 max_bond_order=3):
     """
     Sets the attribute 'hcount' on all nodes in `mol` that don't have it yet.
     The value to which it is set is based on the node's 'element', and the
@@ -274,6 +275,9 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True):
     respect_bond_order : bool
         If False, first try to fill the valence by increasing bond orders, and
         add hydrogens after.
+    max_bond_order : number
+        Only meaningful if respect_bond_order is False. This is the highest
+        bond order that will be set.
 
     Returns
     -------
@@ -281,7 +285,7 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True):
         `mol` is modified in-place.
     """
     if not respect_bond_order:
-        increment_bond_orders(mol)
+        increment_bond_orders(mol, max_bond_order=max_bond_order)
     for n_idx in mol:
         node = mol.nodes[n_idx]
         if 'hcount' in node and respect_hcount:
@@ -311,7 +315,7 @@ def bonds_missing(mol, node_idx, use_order=True):
         The number of missing bonds.
     """
     node = mol.nodes[node_idx]
-    element = node.get('element')
+    element = node.get('element').capitalize()
     if element not in VALENCES:
         return 0
     val = VALENCES.get(element)

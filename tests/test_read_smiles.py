@@ -13,62 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
 import unittest
 
 import networkx as nx
 
 from pysmiles import read_smiles
+from pysmiles.testhelper import GraphTest
 
 
-class Tests(unittest.TestCase):
-    def assertEqualGraphs(self, graph1, graph2):
-        out = nx.is_isomorphic(graph1, graph2,
-                               node_match=operator.eq, edge_match=operator.eq)
-        if out:
-            return
-
-        matcher = nx.isomorphism.GraphMatcher(graph1, graph2)
-        matches = list(matcher.isomorphisms_iter())
-        if not matches:
-            raise AssertionError("Graphs not isomorphic")
-
-        # Now for the hard part. Find the isomorphism that matches best, and
-        # then figure out where the attributes differ.
-        scores = []
-        for m_idx, match in enumerate(matches):
-            score = 0
-            for node_idx, node_jdx in match.items():
-                if graph1.nodes[node_idx] == graph2.nodes[node_jdx]:
-                    score += 1
-            for idx1, jdx1 in graph1.edges:
-                idx2, jdx2 = match[idx1], match[jdx1]
-                edge1 = graph1.edges[idx1, jdx1]
-                edge2 = graph2.edges[idx2, jdx2]
-                if edge1 == edge2:
-                    score += 1
-            scores.append((score, m_idx))
-
-        # This one should be the best.
-        _, m_idx = max(scores)
-        match = matches[m_idx]
-        for node_idx, node_jdx in match.items():
-            self.assertEqual(graph1.nodes[node_idx], graph2.nodes[node_jdx])
-        for idx1, jdx1 in graph1.edges:
-            idx2, jdx2 = match[idx1], match[jdx1]
-            edge1 = graph1.edges[idx1, jdx1]
-            edge2 = graph2.edges[idx2, jdx2]
-            if edge1 == edge2:
-                score += 1
-            if edge1 != edge2:
-                fmt = 'Edge between {} and {} is not equal: {} is not {}'
-                raise AssertionError(fmt.format(graph1.nodes[idx1],
-                                                graph1.nodes[jdx1],
-                                                edge1, edge2))
-
+class Tests(GraphTest):
     def test_single_chain(self):
         smiles = 'CCCC'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         nx.add_path(expected, (0, 1, 2, 3))
@@ -88,7 +44,7 @@ class Tests(unittest.TestCase):
 
     def test_branched(self):
         smiles = 'CCC(CC)CC'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         nx.add_path(expected, (0, 1, 2, 3, 4))
@@ -113,7 +69,7 @@ class Tests(unittest.TestCase):
 
     def test_double_bond(self):
         smiles = 'C=C'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 2})]
@@ -126,7 +82,7 @@ class Tests(unittest.TestCase):
 
     def test_ring(self):
         smiles = 'C1CC1'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -141,12 +97,12 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = "C%11CC%11"
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         self.assertEqualGraphs(found, expected)
 
     def test_aromatic(self):
         smiles = 'c1ccccc1'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1.5}),
@@ -156,19 +112,19 @@ class Tests(unittest.TestCase):
                 (3, 4, {'order': 1.5}),
                 (4, 5, {'order': 1.5})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C', 'hcount': 1},
-                1: {'charge': 0, 'element': 'C', 'hcount': 1},
-                2: {'charge': 0, 'element': 'C', 'hcount': 1},
-                3: {'charge': 0, 'element': 'C', 'hcount': 1},
-                4: {'charge': 0, 'element': 'C', 'hcount': 1},
-                5: {'charge': 0, 'element': 'C', 'hcount': 1}}
+        data = {0: {'charge': 0, 'element': 'c', 'hcount': 1},
+                1: {'charge': 0, 'element': 'c', 'hcount': 1},
+                2: {'charge': 0, 'element': 'c', 'hcount': 1},
+                3: {'charge': 0, 'element': 'c', 'hcount': 1},
+                4: {'charge': 0, 'element': 'c', 'hcount': 1},
+                5: {'charge': 0, 'element': 'c', 'hcount': 1}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
 
     def test_ring_bond(self):
         smiles = 'C1CC=1'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -183,20 +139,20 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = 'C=1CC=1'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         self.assertEqualGraphs(found, expected)
 
         smiles = 'C=1CC1'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         self.assertEqualGraphs(found, expected)
 
         smiles = 'C%11CC=%11'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         self.assertEqualGraphs(found, expected)
 
     def test_branch_bond(self):
         smiles = 'OS(=O)(=S)O'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -215,7 +171,7 @@ class Tests(unittest.TestCase):
 
     def test_deep_branch(self):
         smiles = 'C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C(C))))))))))))))))))))C'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -268,7 +224,7 @@ class Tests(unittest.TestCase):
 
     def test_multiring(self):
         smiles = 'N1CC2CCCC2CC1'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -296,7 +252,7 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = 'c1ccc2ccccc2c1'
-        found = read_smiles(smiles)
+        found = read_smiles(smiles, explicit_hydrogen=True)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1.5}),
@@ -319,16 +275,16 @@ class Tests(unittest.TestCase):
                 (8, 9, {'order': 1.5}),
                 (9, 17, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C'},
-                1: {'charge': 0, 'element': 'C'},
-                2: {'charge': 0, 'element': 'C'},
-                3: {'charge': 0, 'element': 'C'},
-                4: {'charge': 0, 'element': 'C'},
-                5: {'charge': 0, 'element': 'C'},
-                6: {'charge': 0, 'element': 'C'},
-                7: {'charge': 0, 'element': 'C'},
-                8: {'charge': 0, 'element': 'C'},
-                9: {'charge': 0, 'element': 'C'},
+        data = {0: {'charge': 0, 'element': 'c'},
+                1: {'charge': 0, 'element': 'c'},
+                2: {'charge': 0, 'element': 'c'},
+                3: {'charge': 0, 'element': 'c'},
+                4: {'charge': 0, 'element': 'c'},
+                5: {'charge': 0, 'element': 'c'},
+                6: {'charge': 0, 'element': 'c'},
+                7: {'charge': 0, 'element': 'c'},
+                8: {'charge': 0, 'element': 'c'},
+                9: {'charge': 0, 'element': 'c'},
                 10: {'charge': 0, 'element': 'H'},
                 11: {'charge': 0, 'element': 'H'},
                 12: {'charge': 0, 'element': 'H'},
@@ -342,7 +298,7 @@ class Tests(unittest.TestCase):
 
     def test_spiro(self):
         smiles = 'C12(CCCCC1)CCCCC2'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -375,7 +331,7 @@ class Tests(unittest.TestCase):
 
     def test_muffle_H(self):
         smiles = '[H]C([H])([H])[H]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = []
@@ -386,7 +342,7 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = '[H]O([H])[H]O([H])[H]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         expected = nx.Graph()
         data = [(1, 3, {'order': 1}), (3, 4, {'order': 1})]
         expected.add_edges_from(data)
@@ -399,7 +355,7 @@ class Tests(unittest.TestCase):
     def test_atom_spec(self):
         # Little bit of everything
         smiles = '[013CH3-1:1]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = {'charge': -1, 'class': 1, 'element': 'C', 'hcount': 3, 'isotope': 13}
@@ -408,12 +364,12 @@ class Tests(unittest.TestCase):
 
         # Leading 0 isotope; just - for charge
         smiles = '[013CH3-:1]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         self.assertEqualGraphs(found, expected)
 
         # (Deprecated) ++ syntax; 2 letter element
         smiles = '[Cu++]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = {'charge': 2, 'element': 'Cu', 'hcount': 0}
@@ -421,19 +377,19 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = '[Cu+2]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         self.assertEqualGraphs(found, expected)
 
         # 3 letter element
         smiles = '[Uuo+4]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
         expected = nx.Graph()
         data = {'charge': 4, 'element': 'Uuo', 'hcount': 0}
         expected.add_node(0, **data)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[2H][CH2]'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1})]
@@ -444,25 +400,25 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = '*'
-        found = read_smiles(smiles)
+        found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
         expected.add_node(0, charge=0)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[*--]'
-        found = read_smiles(smiles)
+        found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
         expected.add_node(0, charge=-2)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[*-]'
-        found = read_smiles(smiles)
+        found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
         expected.add_node(0, charge=-1)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[H+]'
-        found = read_smiles(smiles)
+        found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
         expected.add_node(0, charge=+1, element='H')
         self.assertEqualGraphs(found, expected)
@@ -473,11 +429,11 @@ class Tests(unittest.TestCase):
 
         smiles = '[HH]'
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_rhodium(self):
         smiles = '[Rh-](Cl)(Cl)(Cl)(Cl)$[Rh-](Cl)(Cl)(Cl)Cl'
-        found = read_smiles(smiles, explicit_H=False)
+        found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
@@ -503,9 +459,9 @@ class Tests(unittest.TestCase):
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
-    def test_explicit_H(self):
+    def test_explicit_hydrogen(self):
         smiles = 'c1occc1'
-        found = read_smiles(smiles, explicit_H=True)
+        found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
         data = [(0, 1, {'order': 1.5}),
                 (0, 4, {'order': 1.5}),
@@ -517,11 +473,11 @@ class Tests(unittest.TestCase):
                 (3, 7, {'order': 1}),
                 (4, 8, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C'},
-                1: {'charge': 0, 'element': 'O'},
-                2: {'charge': 0, 'element': 'C'},
-                3: {'charge': 0, 'element': 'C'},
-                4: {'charge': 0, 'element': 'C'},
+        data = {0: {'charge': 0, 'element': 'c'},
+                1: {'charge': 0, 'element': 'o'},
+                2: {'charge': 0, 'element': 'c'},
+                3: {'charge': 0, 'element': 'c'},
+                4: {'charge': 0, 'element': 'c'},
                 5: {'charge': 0, 'element': 'H'},
                 6: {'charge': 0, 'element': 'H'},
                 7: {'charge': 0, 'element': 'H'},
@@ -530,7 +486,7 @@ class Tests(unittest.TestCase):
         self.assertEqualGraphs(found, expected)
 
         smiles = '[O-]C(O)CN'
-        found = read_smiles(smiles, explicit_H=True)
+        found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
         data = [(0, 1, {'order': 1}),
                 (1, 2, {'order': 1}),
@@ -561,7 +517,7 @@ class Tests(unittest.TestCase):
     def test_cis_trans(self):
         smiles = 'F/C=C/F', 'C(\F)=C/F', 'F\C=C/F', 'C(/F)=C/F'
         for smile in smiles:
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
             self.fail()
 
     @unittest.expectedFailure
@@ -573,37 +529,37 @@ class Tests(unittest.TestCase):
     def test_wrong_cycle(self):
         smiles = 'c1ccccc2'
         with self.assertRaises(KeyError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_wrong_marker(self):
         smiles = "C%1CC1"
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_wrong_noncycle(self):
         smiles = 'c1c1CC'
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_wrong_noncycle2(self):
         smiles = 'CC11C'
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_marker_start(self):
         smiles = '1CCC1'
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_wrong_aromatic(self):
         smiles = 'cccccc'
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
     def test_wrong_ring_bond(self):
         smiles = 'C=1CC-1'
         with self.assertRaises(ValueError):
-            read_smiles(smiles, explicit_H=False)
+            read_smiles(smiles, explicit_hydrogen=False)
 
 
 if __name__ == '__main__':

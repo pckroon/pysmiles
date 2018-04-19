@@ -104,17 +104,19 @@ def aromatize_bonds(mol):
         ring.
     """
     elements = nx.get_node_attributes(mol, 'element')
-    for cycle in nx.cycle_basis(mol):
+    cycles = nx.cycle_basis(mol)
+    for cycle in cycles:
         # If all elements in cycle are lowercase (or missing, *) it's aromatic
         if all(elements.get(n_idx, 'x').islower() for n_idx in cycle):
             for idx, jdx in mol.edges(nbunch=cycle):
                 if not (idx in cycle and jdx in cycle):
                     continue
                 mol.edges[idx, jdx]['order'] = 1.5
-            for n_idx in cycle:
-                mol.nodes[n_idx]['element'] = mol.nodes[n_idx]['element'].upper()
-
-    for n_idx in mol:
+    ring_idxs = set()
+    for cycle in cycles:
+        ring_idxs.update(cycle)
+    non_ring_idxs = set(mol.nodes) - ring_idxs
+    for n_idx in non_ring_idxs:
         if mol.nodes[n_idx].get('element', 'X').islower():
             raise ValueError("You specified an aromatic atom outside of a"
                              " ring. This is impossible")
