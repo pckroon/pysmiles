@@ -138,8 +138,8 @@ def format_atom(molecule, node_key, default_element='*'):
     if aromatic:
         name = name.lower()
 
-    if stereo is None and isotope == '' and charge == 0 and valence == 0 and\
-            name.lower() in 'b c n o p s se as'.split():
+    if (stereo is None and isotope == '' and charge == 0 and valence == 0 and
+            class_ == '' and name.lower() in 'b c n o p s se as'.split()):
         return name
 
     if hcount:
@@ -331,7 +331,7 @@ def bonds_missing(mol, node_idx, use_order=True):
         The number of missing bonds.
     """
     node = mol.nodes[node_idx]
-    element = node.get('element').capitalize()
+    element = node.get('element', '').capitalize()
     if element not in VALENCES:
         return 0
     val = VALENCES.get(element)
@@ -374,7 +374,7 @@ def mark_aromatic_atoms(mol):
 
         for node_idx in cycle:
             node = mol.nodes[node_idx]
-            element = node['element'].capitalize()
+            element = node.get('element', '*').capitalize()
             hcount = node.get('hcount', 0)
             degree = mol.degree(node_idx) + hcount
             # Make sure they are possibly aromatic, and are sp2 hybridized
@@ -397,6 +397,8 @@ def mark_aromatic_atoms(mol):
             aromatic.update(cycle)
     for node_idx in mol:
         node = mol.nodes[node_idx]
+        if 'element' not in node:
+            continue
         if node_idx not in aromatic:
             node['aromatic'] = False
         else:

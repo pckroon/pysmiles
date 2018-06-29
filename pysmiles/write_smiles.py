@@ -66,8 +66,8 @@ def _write_edge_symbol(molecule, n_idx, n_jdx):
         Whether an explicit symbol is needed for this edge.
     """
     order = molecule.edges[n_idx, n_jdx].get('order', 1)
-    aromatic_atoms = molecule.nodes[n_idx]['element'].islower() and\
-                     molecule.nodes[n_jdx]['element'].islower()
+    aromatic_atoms = molecule.nodes[n_idx].get('element', '*').islower() and\
+                     molecule.nodes[n_jdx].get('element', '*').islower()
     aromatic_bond = aromatic_atoms and order == 1.5
     cross_aromatic = aromatic_atoms and order == 1
     single_bond = order == 1
@@ -94,6 +94,9 @@ def write_smiles(molecule, default_element='*', start=None):
     str
         The SMILES string describing `molecule`.
     """
+    molecule = molecule.copy()
+    remove_explicit_hydrogens(molecule)
+
     if start is None:
         # Start at a terminal atom, and if possible, a heteroatom.
         def keyfunc(idx):
@@ -104,8 +107,6 @@ def write_smiles(molecule, default_element='*', start=None):
                     idx)
         start = min(molecule.nodes, key=keyfunc)
 
-    molecule = molecule.copy()
-    remove_explicit_hydrogens(molecule)
 
     order_to_symbol = {0: '.', 1: '-', 1.5: ':', 2: '=', 3: '#', 4: '$'}
 
