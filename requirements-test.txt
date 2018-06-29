@@ -3,3 +3,5 @@ pytest
 coverage
 pytest-cov
 coveralls[yaml]
+hypothesis
+hypothesis-networkx

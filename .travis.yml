@@ -6,8 +6,12 @@ env:
         - COVERALLS=true
 
 install:
+<<<<<<< HEAD
     - pip install --upgrade setuptools pip
     - pip install --upgrade -r requirements-test.txt
+=======
+    - pip install --upgrade pylint pytest coveralls[yaml] pytest-cov hypothesis hypothesis-pytest
+>>>>>>> 29b1a6f... Setup hypothesis testing.
     - pip install --upgrade .
 before_script:
     - pytest --version
