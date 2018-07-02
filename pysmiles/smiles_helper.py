@@ -260,11 +260,14 @@ def remove_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     to_remove = set()
-    defaults = parse_atom('[H]')
+#    defaults = parse_atom('[H]')
     for n_idx in mol.nodes:
         node = mol.nodes[n_idx]
         neighbors = mol[n_idx]
-        if node == defaults and len(neighbors) == 1:
+        # TODO: get these defaults from parsing [H]. But do something smart
+        #       with the hcount attribute.
+        if node['charge'] == 0 and node['element'] == 'H' and \
+                node.get('isotope', 1) == 1 and len(neighbors) == 1:
             neighbor = list(neighbors.keys())[0]
             if mol.nodes[neighbor]['element'] == 'H':
                 # The molecule is H2.
@@ -272,6 +275,9 @@ def remove_explicit_hydrogens(mol):
             to_remove.add(n_idx)
             mol.nodes[neighbor]['hcount'] = mol.nodes[neighbor].get('hcount', 0) + 1
     mol.remove_nodes_from(to_remove)
+    for n_idx in mol.nodes:
+        if 'hcount' not in mol.nodes[n_idx]:
+            mol.nodes[n_idx]['hcount'] = 0
 
 
 def fill_valence(mol, respect_hcount=True, respect_bond_order=True,

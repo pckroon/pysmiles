@@ -65,3 +65,12 @@ class GraphTest(unittest.TestCase):
             graph1_nodes.append(graph1.nodes[node_idx])
             graph2_nodes.append(graph2.nodes[node_jdx])
         self.assertEqual(graph1_nodes, graph2_nodes)
+        for idx1, jdx1 in graph1.edges:
+            idx2, jdx2 = match[idx1], match[jdx1]
+            edge1 = graph1.edges[idx1, jdx1]
+            edge2 = graph2.edges[idx2, jdx2]
+            if edge1 != edge2:
+                fmt = 'Edge between {} and {} is not equal: {} is not {}'
+                raise AssertionError(fmt.format(graph1.nodes[idx1],
+                                                graph1.nodes[jdx1],
+                                                edge1, edge2))

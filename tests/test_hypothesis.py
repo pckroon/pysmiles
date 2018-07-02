@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from functools import partial
+import operator
 
 from hypothesis import strategies as st
 from hypothesis.stateful import Bundle, RuleBasedStateMachine, rule, invariant, initialize
@@ -24,7 +25,6 @@ from pysmiles import write_smiles
 from pysmiles.smiles_helper import (add_explicit_hydrogens,
     remove_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges,
     fill_valence, correct_aromatic_rings, increment_bond_orders, )
-from pysmiles.testhelper import graphs_are_equal
 
 
 def no_none_value(mapping):
@@ -87,16 +87,18 @@ class SMILESTests(RuleBasedStateMachine):
                                   add_edges_untill=nx.is_connected, min_nodes=1))
     def setup(self, mol):
         self.mol = mol
+        self.explicit_h = False
         note(self.mol.nodes(data=True))
         note(self.mol.edges(data=True))
 
-
-#    @rule()
-#    def explicit_h(self):
-#        add_explicit_hydrogens(self.mol)
+    @rule()
+    def add_explicit_hydrogens(self):
+        self.explicit_h = True
+        add_explicit_hydrogens(self.mol)
 
     @rule()
-    def implicit_h(self):
+    def remove_explicit_hydrogens(self):
+        self.explicit_h = False
         remove_explicit_hydrogens(self.mol)
 
     @rule()
@@ -110,10 +112,16 @@ class SMILESTests(RuleBasedStateMachine):
     @rule()
     def correct_aromatic_rings(self):
         correct_aromatic_rings(self.mol)
+        if self.explicit_h:
+            # Correct aromatic rings calls fill valence, see below.
+            add_explicit_hydrogens(self.mol)
 
     @rule()
     def fill_valence(self):
         fill_valence(self.mol)
+        if self.explicit_h:
+            # Fill valence adds implicit hydrogens, so make them explicit again
+            add_explicit_hydrogens(self.mol)
 
     @rule()
     def increment_bond_orders(self):
@@ -126,10 +134,11 @@ class SMILESTests(RuleBasedStateMachine):
         smiles = write_smiles(self.mol)
         note(self.mol.nodes(data=True))
         note(self.mol.edges(data=True))
-        note(smiles)
-        found = read_smiles(smiles)
+        note([smiles, self.explicit_h])
+        found = read_smiles(smiles, explicit_hydrogen=self.explicit_h)
         note(found.nodes(data=True))
         note(found.edges(data=True))
-        graphs_are_equal(self.mol, found)
+        assert nx.is_isomorphic(self.mol, found,
+                           node_match=operator.eq, edge_match=operator.eq)
 
 TestSmiles = SMILESTests.TestCase
