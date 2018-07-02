@@ -130,7 +130,7 @@ def format_atom(molecule, node_key, default_element='*'):
     isotope = node.get('isotope', '')
     class_ = node.get('class', '')
     aromatic = node.get('aromatic', False)
-    valence = bonds_missing(molecule, node_key)
+    default_h = has_default_h_count(molecule, node_key)
 
     if stereo is not None:
         raise NotImplementedError
@@ -138,7 +138,7 @@ def format_atom(molecule, node_key, default_element='*'):
     if aromatic:
         name = name.lower()
 
-    if (stereo is None and isotope == '' and charge == 0 and valence == 0 and
+    if (stereo is None and isotope == '' and charge == 0 and default_h and
             class_ == '' and name.lower() in 'b c n o p s se as'.split()):
         return name
 
@@ -319,8 +319,7 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
 def bonds_missing(mol, node_idx, use_order=True):
     """
     Returns how much the specified node is under valence. If use_order is
-    False, treat all bonds as if they are order 1. Returns `hcount` if it is
-    set for the node.
+    False, treat all bonds as if they are order 1.
 
     Parameters
     ----------
@@ -336,23 +335,91 @@ def bonds_missing(mol, node_idx, use_order=True):
     int
         The number of missing bonds.
     """
-    node = mol.nodes[node_idx]
-    element = node.get('element', '').capitalize()
+    bonds = _bonds(mol, node_idx, use_order)
+    bonds += mol.nodes[node_idx].get('hcount', 0)
+    valence = _valence(mol, node_idx, bonds)
+    return int(valence - bonds)
+
+
+def _valence(mol, node_idx, minimum=0):
+    """
+    Returns the valence of the specified node. Since some elements can have
+    multiple valences, give the smallest one that is more than `minimum`.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    minimum : int
+        The minimum value of valence.
+
+    Returns
+    -------
+    int
+        The smallest valence of node more than `minimum`.
+    """
+    element = mol.nodes[node_idx].get('element', '').capitalize()
     if element not in VALENCES:
         return 0
     val = VALENCES.get(element)
+    try:
+        val = min(filter(lambda a: a >= minimum, val))
+    except ValueError:  # More bonds than possible
+        val = max(val)
+    return val
+
+
+def _bonds(mol, node_idx, use_order=True):
+    """
+    Returns how many explicit bonds the specified node has. If use_order is
+    False, treat all bonds as if they are order 1.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    use_order : bool
+        If False, treat all bonds as single.
+
+    Returns
+    -------
+    int
+        The number of bonds.
+    """
     if use_order:
         bond_orders = map(operator.itemgetter(2),
                           mol.edges(nbunch=node_idx, data='order', default=1))
         bonds = sum(bond_orders)
     else:
         bonds = len(mol[node_idx])
-    bonds += node.get('hcount', 0)
-    try:
-        val = min(filter(lambda a: a >= bonds, val))
-    except ValueError:  # More bonds than possible
-        val = max(val)
-    return int(val - bonds)
+    return bonds
+
+
+def has_default_h_count(mol, node_idx, use_order=True):
+    """
+    Returns whether the hydrogen count for this atom is non-standard.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    use_order : bool
+        If False, treat all bonds as single.
+
+    Returns
+    -------
+    bool
+    """
+    bonds = _bonds(mol, node_idx, use_order)
+    valence = _valence(mol, node_idx, bonds)
+    hcount = mol.nodes[node_idx].get('hcount', 0)
+    return valence - bonds == hcount
 
 
 def mark_aromatic_atoms(mol):
