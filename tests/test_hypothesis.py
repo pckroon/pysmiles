@@ -16,8 +16,8 @@ from functools import partial
 import operator
 
 from hypothesis import strategies as st
-from hypothesis.stateful import Bundle, RuleBasedStateMachine, rule, invariant, initialize
-from hypothesis import note
+from hypothesis.stateful import Bundle, RuleBasedStateMachine, rule, invariant, initialize, run_state_machine_as_test
+from hypothesis import note, settings
 import networkx as nx
 
 from pysmiles import read_smiles
@@ -25,7 +25,7 @@ from pysmiles import write_smiles
 from pysmiles.smiles_helper import (add_explicit_hydrogens,
     remove_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges,
     fill_valence, correct_aromatic_rings, increment_bond_orders, )
-
+from pysmiles.testhelper import GraphTest
 
 def no_none_value(mapping):
     return {k: v for k, v in mapping.items() if v is not None}
@@ -138,7 +138,18 @@ class SMILESTests(RuleBasedStateMachine):
         found = read_smiles(smiles, explicit_hydrogen=self.explicit_h)
         note(found.nodes(data=True))
         note(found.edges(data=True))
-        assert nx.is_isomorphic(self.mol, found,
-                           node_match=operator.eq, edge_match=operator.eq)
+        self.assertEqualGraphs(self.mol, found)
+        #assert nx.is_isomorphic(self.mol, found,
+        #                   node_match=operator.eq, edge_match=operator.eq)
 
-TestSmiles = SMILESTests.TestCase
+class Tester(GraphTest):
+    def _make_state_machine(self):
+        state_machine = SMILESTests()
+        state_machine.assertEqualGraphs = self.assertEqualGraphs
+        return state_machine
+    
+    def test_hypo(self):
+        run_state_machine_as_test(self._make_state_machine, settings(max_examples=500))
+        
+
+#TestSmiles = SMILESTests.TestCase
