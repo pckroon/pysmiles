@@ -266,10 +266,10 @@ def remove_explicit_hydrogens(mol):
         neighbors = mol[n_idx]
         # TODO: get these defaults from parsing [H]. But do something smart
         #       with the hcount attribute.
-        if node['charge'] == 0 and node['element'] == 'H' and \
+        if node['charge'] == 0 and node.get('element', '') == 'H' and \
                 node.get('isotope', 1) == 1 and len(neighbors) == 1:
             neighbor = list(neighbors.keys())[0]
-            if mol.nodes[neighbor]['element'] == 'H':
+            if mol.nodes[neighbor].get('element', '') == 'H':
                 # The molecule is H2.
                 continue
             to_remove.add(n_idx)
