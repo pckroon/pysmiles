@@ -126,12 +126,12 @@ def write_smiles(molecule, default_element='*', start=None):
     total_edges = set(map(frozenset, molecule.edges))
     ring_edges = total_edges - edges
 
-    atom_to_ring_idx = {}
+    atom_to_ring_idx = defaultdict(list)
     ring_idx_to_bond = {}
     ring_idx_to_marker = {}
     for ring_idx, (n_idx, n_jdx) in enumerate(ring_edges, 1):
-        atom_to_ring_idx[n_idx] = ring_idx
-        atom_to_ring_idx[n_jdx] = ring_idx
+        atom_to_ring_idx[n_idx].append(ring_idx)
+        atom_to_ring_idx[n_jdx].append(ring_idx)
         ring_idx_to_bond[ring_idx] = (n_idx, n_jdx)
 
     branch_depth = 0
@@ -158,20 +158,21 @@ def write_smiles(molecule, default_element='*', start=None):
         smiles += format_atom(molecule, current, default_element)
         if current in atom_to_ring_idx:
             # We're going to need to write a ring number
-            ring_idx = atom_to_ring_idx[current]
-            ring_bond = ring_idx_to_bond[ring_idx]
-            if ring_idx not in ring_idx_to_marker:
-                marker = _get_ring_marker(ring_idx_to_marker.values())
-                ring_idx_to_marker[ring_idx] = marker
-                new_marker = True
-            else:
-                marker = ring_idx_to_marker.pop(ring_idx)
-                new_marker = False
-
-            if _write_edge_symbol(molecule, *ring_bond) and new_marker:
-                order = molecule.edges[ring_bond].get('order', 1)
-                smiles += order_to_symbol[order]
-            smiles += str(marker) if marker < 10 else '%{}'.format(marker)
+            ring_idxs = atom_to_ring_idx[current]
+            for ring_idx in ring_idxs:
+                ring_bond = ring_idx_to_bond[ring_idx]
+                if ring_idx not in ring_idx_to_marker:
+                    marker = _get_ring_marker(ring_idx_to_marker.values())
+                    ring_idx_to_marker[ring_idx] = marker
+                    new_marker = True
+                else:
+                    marker = ring_idx_to_marker.pop(ring_idx)
+                    new_marker = False
+    
+                if _write_edge_symbol(molecule, *ring_bond) and new_marker:
+                    order = molecule.edges[ring_bond].get('order', 1)
+                    smiles += order_to_symbol[order]
+                smiles += str(marker) if marker < 10 else '%{}'.format(marker)
 
         if current in dfs_successors:
             # Proceed to the next node in this branch
