@@ -12,12 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from functools import partial
-import operator
-
 from hypothesis import strategies as st
-from hypothesis.stateful import Bundle, RuleBasedStateMachine, rule, invariant, initialize, run_state_machine_as_test
-from hypothesis import note, settings
+from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
+                                 initialize, run_state_machine_as_test)
+from hypothesis import assume, example, note, settings
 import networkx as nx
 
 from pysmiles import read_smiles
@@ -26,6 +24,7 @@ from pysmiles.smiles_helper import (add_explicit_hydrogens,
     remove_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges,
     fill_valence, correct_aromatic_rings, increment_bond_orders, )
 from pysmiles.testhelper import GraphTest
+
 
 def no_none_value(mapping):
     return {k: v for k, v in mapping.items() if v is not None}
@@ -45,24 +44,38 @@ def graph_builder(draw,
                   edge_data=st.fixed_dictionaries({}),
                   node_keys=st.integers(),
                   min_nodes=0, max_nodes=50,
-                  graph_type=nx.Graph, min_density=0.5,
-                  add_edges_untill=lambda x: True, self_loops=False):
-    if not 0 <= min_density <= 1:
-        raise ValueError('min_density should be between 0 and 1')
+                  min_edges=0, max_edges=None,
+                  graph_type=nx.Graph,
+                  add_edges_until=nx.is_connected,
+                  self_loops=False):
     if min_nodes < 0:
         raise ValueError('min_nodes can not be negative')
 
     g = graph_type()
-    nodes = sorted(draw(st.sets(node_keys, min_size=min_nodes, max_size=max_nodes)))
-    for node in nodes:
-        g.add_node(node, **draw(node_data))
+    nodes = draw(st.lists(st.tuples(node_keys, node_data), min_size=min_nodes,
+                          max_size=max_nodes, unique_by=lambda t: t[0]))
+    g.add_node(nodes[0][0], **nodes[0][1])
+    for node, data in nodes[1:]:
+        edge_to = draw(st.sampled_from(sorted(g.nodes)))
+        g.add_node(node, **data)
+        g.add_edge(node, edge_to, **draw(edge_data))
 
-    while g and (nx.density(g) < min_density or not add_edges_untill(g)):
-        n1 = draw(st.sampled_from(nodes))
-        n2 = draw(st.sampled_from(nodes))
-        if not self_loops:
-            st.assume(n1 != n2)
-        g.add_edge(n1, n2, **draw(edge_data))
+    if max_edges is None:
+        max_edges = len(nodes) * (len(nodes) - 1)
+
+    min_edges = max(0, min_edges - len(g.edges))
+    max_edges = min(len(nodes) * (len(nodes) - 1), max_edges - len(g.edges))
+
+    node_pair = st.lists(st.sampled_from([n[0] for n in nodes]),
+                         min_size=2, max_size=2,
+                         unique=not self_loops)
+    edge = st.tuples(node_pair, edge_data)
+    edges = draw(st.lists(edge, min_size=min_edges, max_size=max_edges,
+                          unique_by=lambda t: tuple(t[0])))
+
+    for (n1, n2), data in edges:
+        g.add_edge(n1, n2, **data)
+    assume(add_edges_until(g))
 
     return g
 
@@ -78,13 +91,18 @@ node_data = st.fixed_dictionaries({'isotope': isotope,
                                    'element': element,
                                    'charge': charge,
                                    'class': class_}).map(no_invalid_values).map(no_none_value)
-order = st.integers(min_value=0, max_value=4)
-edge_data = st.fixed_dictionaries(dict(order=order))
+order = st.sampled_from([1, 2, 3, 0, 4, 1.5])
+edge_data = st.fixed_dictionaries({'order': order})
+
+arom_triangle = read_smiles('[*]1[*][*]1')
+for edge in arom_triangle.edges:
+    arom_triangle.edges[edge]['order'] = 1
 
 
 class SMILESTests(RuleBasedStateMachine):
     @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data,
-                                  add_edges_untill=nx.is_connected, min_nodes=1))
+                                  add_edges_until=nx.is_connected, min_nodes=1))
+    @example(mol=arom_triangle)
     def setup(self, mol):
         self.mol = mol
         self.explicit_h = False
@@ -139,17 +157,13 @@ class SMILESTests(RuleBasedStateMachine):
         note(found.nodes(data=True))
         note(found.edges(data=True))
         self.assertEqualGraphs(self.mol, found)
-        #assert nx.is_isomorphic(self.mol, found,
-        #                   node_match=operator.eq, edge_match=operator.eq)
+
 
 class Tester(GraphTest):
     def _make_state_machine(self):
         state_machine = SMILESTests()
         state_machine.assertEqualGraphs = self.assertEqualGraphs
         return state_machine
-    
-    def test_hypo(self):
-        run_state_machine_as_test(self._make_state_machine, settings(max_examples=500))
-        
 
-#TestSmiles = SMILESTests.TestCase
+    def test_hypo(self):
+        run_state_machine_as_test(self._make_state_machine, settings(max_examples=250))
