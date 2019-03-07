@@ -15,8 +15,8 @@
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
                                  initialize, run_state_machine_as_test)
-from hypothesis import assume, example, note, settings
-import networkx as nx
+from hypothesis import example, note, settings
+from hypothesis_networkx import graph_builder
 
 from pysmiles import read_smiles
 from pysmiles import write_smiles
@@ -36,48 +36,6 @@ def no_invalid_values(mapping):
         if mapping.get(k) == v:
             del mapping[k]
     return mapping
-
-
-@st.composite
-def graph_builder(draw,
-                  node_data=st.fixed_dictionaries({}),
-                  edge_data=st.fixed_dictionaries({}),
-                  node_keys=st.integers(),
-                  min_nodes=0, max_nodes=50,
-                  min_edges=0, max_edges=None,
-                  graph_type=nx.Graph,
-                  add_edges_until=nx.is_connected,
-                  self_loops=False):
-    if min_nodes < 0:
-        raise ValueError('min_nodes can not be negative')
-
-    g = graph_type()
-    nodes = draw(st.lists(st.tuples(node_keys, node_data), min_size=min_nodes,
-                          max_size=max_nodes, unique_by=lambda t: t[0]))
-    g.add_node(nodes[0][0], **nodes[0][1])
-    for node, data in nodes[1:]:
-        edge_to = draw(st.sampled_from(sorted(g.nodes)))
-        g.add_node(node, **data)
-        g.add_edge(node, edge_to, **draw(edge_data))
-
-    if max_edges is None:
-        max_edges = len(nodes) * (len(nodes) - 1)
-
-    min_edges = max(0, min_edges - len(g.edges))
-    max_edges = min(len(nodes) * (len(nodes) - 1), max_edges - len(g.edges))
-
-    node_pair = st.lists(st.sampled_from([n[0] for n in nodes]),
-                         min_size=2, max_size=2,
-                         unique=not self_loops)
-    edge = st.tuples(node_pair, edge_data)
-    edges = draw(st.lists(edge, min_size=min_edges, max_size=max_edges,
-                          unique_by=lambda t: tuple(t[0])))
-
-    for (n1, n2), data in edges:
-        g.add_edge(n1, n2, **data)
-    assume(add_edges_until(g))
-
-    return g
 
 
 isotope = st.one_of(st.none(), st.integers(min_value=1))
@@ -101,7 +59,7 @@ for edge in arom_triangle.edges:
 
 class SMILESTests(RuleBasedStateMachine):
     @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data,
-                                  add_edges_until=nx.is_connected, min_nodes=1))
+                                  min_nodes=1))
     @example(mol=arom_triangle)
     def setup(self, mol):
         self.mol = mol
@@ -118,14 +76,6 @@ class SMILESTests(RuleBasedStateMachine):
     def remove_explicit_hydrogens(self):
         self.explicit_h = False
         remove_explicit_hydrogens(self.mol)
-
-    @rule()
-    def mark_arom_atom(self):
-        mark_aromatic_atoms(self.mol)
-
-    @rule()
-    def mark_aromatic_edges(self):
-        mark_aromatic_edges(self.mol)
 
     @rule()
     def correct_aromatic_rings(self):
