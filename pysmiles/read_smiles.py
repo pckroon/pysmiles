@@ -29,6 +29,7 @@ class TokenType(enum.Enum):
     BRANCH_START = 3
     BRANCH_END = 4
     RING_NUM = 5
+    EZSTEREO = 6
 
 
 def tokenize(smiles):
@@ -78,6 +79,8 @@ def tokenize(smiles):
             # If smiles is too short this will raise a ValueError, which is
             # (slightly) prettier than a StopIteration.
             yield TokenType.RING_NUM, int(next(smiles, '') + next(smiles, ''))
+        elif char in '/\\':
+            yield TokenType.EZSTEREO, char
         elif char.isdigit():
             yield TokenType.RING_NUM, int(char)
 
@@ -201,6 +204,8 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
+        elif tokentype == TokenType.EZSTEREO:
+            print("I can't deal with stereo yet...")
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
     # Time to deal with aromaticity
