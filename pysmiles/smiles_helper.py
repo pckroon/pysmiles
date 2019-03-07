@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Contains helper functions for parsing and writing SMILES strings, as well as
+some convenience functions for adding hydrogens, and detecting aromaticity.
+"""
+
 import re
 import operator
 

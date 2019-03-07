@@ -12,6 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Contains a unittest.TestCase subclass that has an `assertEqualGraphs` method.
+"""
+
 import operator
 import unittest
 
@@ -19,13 +23,19 @@ import networkx as nx
 
 
 class GraphTest(unittest.TestCase):
-    def assertEqualGraphs(self, graph1, graph2):
+    """
+    Adds `assertEqualGraphs` method.
+    """
+    def assertEqualGraphs(self, graph1, graph2):  # pylint: disable=invalid-name
+        """
+        Asserts that `graph1` and `graph2` are equal up to isomorphism.
+        """
         out = nx.is_isomorphic(graph1, graph2,
                                node_match=operator.eq, edge_match=operator.eq)
         if out:
             return
 
-        matcher = nx.isomorphism.GraphMatcher(graph1, graph2)
+        matcher = nx.isomorphism.GraphMatcher(graph1, graph2)  # pylint: disable=no-member
         matches = list(matcher.isomorphisms_iter())
         if not matches:
             raise AssertionError("Graphs not isomorphic")
@@ -49,8 +59,12 @@ class GraphTest(unittest.TestCase):
         # This one should be the best.
         _, m_idx = max(scores)
         match = matches[m_idx]
+        graph1_nodes = []
+        graph2_nodes = []
         for node_idx, node_jdx in match.items():
-            self.assertEqual(graph1.nodes[node_idx], graph2.nodes[node_jdx])
+            graph1_nodes.append(graph1.nodes[node_idx])
+            graph2_nodes.append(graph2.nodes[node_jdx])
+        self.assertEqual(graph1_nodes, graph2_nodes)
         for idx1, jdx1 in graph1.edges:
             idx2, jdx2 = match[idx1], match[jdx1]
             edge1 = graph1.edges[idx1, jdx1]

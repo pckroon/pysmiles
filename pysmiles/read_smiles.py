@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Exposes functionality needed for parsing SMILES strings.
+"""
+
 import enum
 
 import networkx as nx
@@ -169,7 +173,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
             print("I can't deal with stereo yet...")
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
-    
+
     # Time to deal with aromaticity
     cycles = nx.cycle_basis(mol)
     ring_idxs = set()
