@@ -18,7 +18,7 @@ import enum
 import networkx as nx
 
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
-                            parse_atom, fill_valence)
+                            parse_atom, fill_valence, mark_aromatic_edges)
 
 
 @enum.unique
@@ -32,7 +32,7 @@ class TokenType(enum.Enum):
     EZSTEREO = 6
 
 
-def tokenize(smiles):
+def _tokenize(smiles):
     """
     Iterates over a SMILES string, yielding tokens.
 
@@ -85,46 +85,6 @@ def tokenize(smiles):
             yield TokenType.RING_NUM, int(char)
 
 
-def aromatize_bonds(mol):
-    """
-    Sets bond orders between atoms which are specified to be aromatic to 1.5.
-    Atoms are aromatic if their element is lowercase.
-
-    Paratmeters
-    -----------
-    mol : nx.Graph
-        The molecule to be made aromatic.
-
-    Returns
-    -------
-    None
-        `mol` is modified in-place.
-
-    Raises
-    ------
-    ValueError
-        If there are atoms which are specified to be aromatic that are not in a
-        ring.
-    """
-    elements = nx.get_node_attributes(mol, 'element')
-    cycles = nx.cycle_basis(mol)
-    for cycle in cycles:
-        # If all elements in cycle are lowercase (or missing, *) it's aromatic
-        if all(elements.get(n_idx, 'x').islower() for n_idx in cycle):
-            for idx, jdx in mol.edges(nbunch=cycle):
-                if not (idx in cycle and jdx in cycle):
-                    continue
-                mol.edges[idx, jdx]['order'] = 1.5
-    ring_idxs = set()
-    for cycle in cycles:
-        ring_idxs.update(cycle)
-    non_ring_idxs = set(mol.nodes) - ring_idxs
-    for n_idx in non_ring_idxs:
-        if mol.nodes[n_idx].get('element', 'X').islower():
-            raise ValueError("You specified an aromatic atom outside of a"
-                             " ring. This is impossible")
-
-
 def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     """
     Parses a SMILES string.
@@ -141,9 +101,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     Returns
     -------
     nx.Graph
-        A graph describing a molecule. Nodes will have an 'element' and a
-        'charge', and if `explicit_hydrogen` is False a 'hcount'. Depending on
-        the input, they will also have 'isotope' and 'class' information.
+        A graph describing a molecule. Nodes will have an 'element', 'aromatic'
+        and a 'charge', and if `explicit_hydrogen` is False a 'hcount'.
+        Depending on the input, they will also have 'isotope' and 'class'
+        information.
         Edges will have an 'order'.
     """
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
@@ -154,7 +115,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     next_bond = None
     branches = []
     ring_nums = {}
-    for tokentype, token in tokenize(smiles):
+    for tokentype, token in _tokenize(smiles):
         if tokentype == TokenType.ATOM:
             mol.add_node(idx, **parse_atom(token))
             if anchor is not None:
@@ -208,8 +169,19 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
             print("I can't deal with stereo yet...")
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
+    
     # Time to deal with aromaticity
-    aromatize_bonds(mol)
+    cycles = nx.cycle_basis(mol)
+    ring_idxs = set()
+    for cycle in cycles:
+        ring_idxs.update(cycle)
+    non_ring_idxs = set(mol.nodes) - ring_idxs
+    for n_idx in non_ring_idxs:
+        if mol.nodes[n_idx].get('aromatic', False):
+            raise ValueError("You specified an aromatic atom outside of a"
+                             " ring. This is impossible")
+
+    mark_aromatic_edges(mol)
 
     # Add Hydrogens
     fill_valence(mol)

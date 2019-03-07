@@ -52,15 +52,16 @@ def parse_atom(atom):
     Returns
     -------
     dict
-        A dictionary containing at least 'element' and 'charge'. If present,
-        will also contain 'hcount', 'isotope', and 'class'.
+        A dictionary containing at least 'element', 'aromatic', and 'charge'. If
+        present, will also contain 'hcount', 'isotope', and 'class'.
     """
-    defaults = {'charge': 0, 'hcount': 0}
+    defaults = {'charge': 0, 'hcount': 0, 'aromatic': False}
     if not atom.startswith('[') and not atom.endswith(']'):
         if atom != '*':
             # Don't specify hcount to signal we don't actually know anything
             # about it
-            return {'element': atom, 'charge': 0}
+            return {'element': atom.capitalize(), 'charge': 0,
+                    'aromatic': atom.islower()}
         else:
             return defaults.copy()
     match = ATOM_PATTERN.match(atom)
@@ -69,12 +70,18 @@ def parse_atom(atom):
     out = defaults.copy()
     out.update({k: v for k, v in match.groupdict().items() if v is not None})
 
-    parse_helpers = {'isotope': int,
-                     'element': lambda x: x,
-                     'stereo': lambda x: x,
-                     'hcount': parse_hcount,
-                     'charge': parse_charge,
-                     'class': int}
+    if out.get('element', 'X').islower():
+        out['aromatic'] = True
+
+    parse_helpers = {
+        'isotope': int,
+        'element': str.capitalize,
+        'stereo': lambda x: x,
+        'hcount': parse_hcount,
+        'charge': parse_charge,
+        'class': int,
+        'aromatic': lambda x: x,
+    }
 
     for attr, val_str in out.items():
         out[attr] = parse_helpers[attr](val_str)
@@ -117,13 +124,17 @@ def format_atom(molecule, node_key, default_element='*'):
     stereo = node.get('stereo', None)
     isotope = node.get('isotope', '')
     class_ = node.get('class', '')
+    aromatic = node.get('aromatic', False)
     valence = bonds_missing(molecule, node_key)
 
     if stereo is not None:
         raise NotImplementedError
 
+    if aromatic:
+        name = name.lower()
+
     if stereo is None and isotope == '' and charge == 0 and valence == 0 and\
-            name in 'B C N O P S F Cl Br I b c n o p s se as'.split():
+            name.lower() in 'b c n o p s se as'.split():
         return name
 
     if hcount:
@@ -335,7 +346,7 @@ def bonds_missing(mol, node_idx, use_order=True):
 
 def mark_aromatic_atoms(mol):
     """
-    Sets the elements of all aromatic atoms in mol to lowercase. Requires that
+    Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
     the 'hcount' on atoms is correct.
 
     Parameters
@@ -382,14 +393,15 @@ def mark_aromatic_atoms(mol):
     for node_idx in mol:
         node = mol.nodes[node_idx]
         if node_idx not in aromatic:
-            node['element'] = node['element'].capitalize()
+            node['aromatic'] = False
         else:
-            node['element'] = node['element'].lower()
+            node['aromatic'] = True
 
 
 def mark_aromatic_edges(mol):
     """
-    Set all bonds between aromatic atoms (lowercase elements) to 1.5.
+    Set all bonds between aromatic atoms (attribute 'aromatic' is `True`) to
+    1.5.
 
     Parameters
     ----------
@@ -405,15 +417,15 @@ def mark_aromatic_edges(mol):
         for idx, jdx in mol.edges(nbunch=cycle):
             if idx not in cycle or jdx not in cycle:
                 continue
-            if mol.nodes[idx]['element'].islower() and\
-                  mol.nodes[jdx]['element'].islower():
+            if (mol.nodes[idx].get('aromatic', False)
+                    and mol.nodes[jdx].get('aromatic', False)):
                 mol.edges[idx, jdx]['order'] = 1.5
 
 
 def correct_aromatic_rings(mol):
     """
-    Sets hcount for all atoms, the element of all aromatic atoms to lowercase,
-    and the order of all aromatic bonds to 1.5.
+    Sets hcount for all atoms, marks aromaticity for all atoms, and the order of
+    all aromatic bonds to 1.5.
 
     Parameters
     ----------

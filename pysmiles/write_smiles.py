@@ -20,7 +20,7 @@ import networkx as nx
 from .smiles_helper import remove_explicit_hydrogens, format_atom
 
 
-def get_ring_marker(used_markers):
+def _get_ring_marker(used_markers):
     """
     Returns the lowest number larger than 0 that is not in `used_markers`.
 
@@ -40,7 +40,7 @@ def get_ring_marker(used_markers):
     return new_marker
 
 
-def write_edge_symbol(molecule, n_idx, n_jdx):
+def _write_edge_symbol(molecule, n_idx, n_jdx):
     """
     Determines whether a symbol should be written for the edge between `n_idx`
     and `n_jdx` in `molecule`. It should not be written if it's a bond of order
@@ -147,7 +147,7 @@ def write_smiles(molecule, default_element='*', start=None):
             previous = predecessors[current]
             assert len(previous) == 1
             previous = previous[0]
-            if write_edge_symbol(molecule, previous, current):
+            if _write_edge_symbol(molecule, previous, current):
                 order = molecule.edges[previous, current].get('order', 1)
                 smiles += order_to_symbol[order]
         smiles += format_atom(molecule, current, default_element)
@@ -156,14 +156,14 @@ def write_smiles(molecule, default_element='*', start=None):
             ring_idx = atom_to_ring_idx[current]
             ring_bond = ring_idx_to_bond[ring_idx]
             if ring_idx not in ring_idx_to_marker:
-                marker = get_ring_marker(ring_idx_to_marker.values())
+                marker = _get_ring_marker(ring_idx_to_marker.values())
                 ring_idx_to_marker[ring_idx] = marker
                 new_marker = True
             else:
                 marker = ring_idx_to_marker.pop(ring_idx)
                 new_marker = False
 
-            if write_edge_symbol(molecule, *ring_bond) and new_marker:
+            if _write_edge_symbol(molecule, *ring_bond) and new_marker:
                 order = molecule.edges[ring_bond].get('order', 1)
                 smiles += order_to_symbol[order]
             smiles += str(marker) if marker < 10 else '%{}'.format(marker)
