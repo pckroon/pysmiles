@@ -27,7 +27,7 @@ class Tests(GraphTest):
         mol = nx.Graph()
         nx.add_path(mol, range(4), order=1)
         for n_idx in mol:
-            mol.nodes[n_idx].update(element='C', charge=0)
+            mol.nodes[n_idx].update(element='C', charge=0, aromatic=False)
         fill_valence(mol)
 
         smiles = write_smiles(mol)
@@ -41,6 +41,7 @@ class Tests(GraphTest):
             mol2.nodes[idx]['element'] = ele
             mol2.nodes[idx]['hcount'] = count
             mol2.nodes[idx]['charge'] = 0
+            mol2.nodes[idx]['aromatic'] = False
         mol2.edges[1, 2]['order'] = 2
 
         smiles = write_smiles(mol2)
@@ -53,6 +54,7 @@ class Tests(GraphTest):
         for node_key in mol:
             mol.nodes[node_key]['element'] = 'C'
             mol.nodes[node_key]['charge'] = 0
+            mol.nodes[node_key]['aromatic'] = True
         mol.nodes[6]['element'] = 'O'
         for edge in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)]:
             mol.edges[edge]['order'] = 1.5
@@ -68,6 +70,7 @@ class Tests(GraphTest):
         for idx, ele in enumerate('CCCCOCO'):
             mol.nodes[idx]['element'] = ele
             mol.nodes[idx]['charge'] = 0
+            mol.nodes[idx]['aromatic'] = False
         mol.nodes[4]['charge'] = -1
         mol.nodes[4]['hcount'] = 0
         mol.edges[3, 6]['order'] = 2

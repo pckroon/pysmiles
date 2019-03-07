@@ -28,10 +28,10 @@ class Tests(GraphTest):
 
         expected = nx.Graph()
         nx.add_path(expected, (0, 1, 2, 3))
-        data = [(0, {'element': 'C', 'charge': 0, 'hcount': 3}),
-                (1, {'element': 'C', 'charge': 0, 'hcount': 2}),
-                (2, {'element': 'C', 'charge': 0, 'hcount': 2}),
-                (3, {'element': 'C', 'charge': 0, 'hcount': 3})]
+        data = [(0, {'element': 'C', 'charge': 0, 'hcount': 3, 'aromatic': False}),
+                (1, {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False}),
+                (2, {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False}),
+                (3, {'element': 'C', 'charge': 0, 'hcount': 3, 'aromatic': False})]
         data = dict(data)
         nx.set_node_attributes(expected, data)
         data = [((0, 1), {'order': 1}),
@@ -49,13 +49,13 @@ class Tests(GraphTest):
         expected = nx.Graph()
         nx.add_path(expected, (0, 1, 2, 3, 4))
         expected.add_edges_from([(2, 5), (5, 6)])
-        data = {0: {'element': 'C', 'charge': 0, 'hcount': 3},
-                1: {'element': 'C', 'charge': 0, 'hcount': 2},
-                2: {'element': 'C', 'charge': 0, 'hcount': 1},
-                3: {'element': 'C', 'charge': 0, 'hcount': 2},
-                4: {'element': 'C', 'charge': 0, 'hcount': 3},
-                5: {'element': 'C', 'charge': 0, 'hcount': 2},
-                6: {'element': 'C', 'charge': 0, 'hcount': 3}}
+        data = {0: {'element': 'C', 'charge': 0, 'hcount': 3, 'aromatic': False},
+                1: {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False},
+                2: {'element': 'C', 'charge': 0, 'hcount': 1, 'aromatic': False},
+                3: {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False},
+                4: {'element': 'C', 'charge': 0, 'hcount': 3, 'aromatic': False},
+                5: {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False},
+                6: {'element': 'C', 'charge': 0, 'hcount': 3, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         data = [((0, 1), {'order': 1}),
                 ((1, 2), {'order': 1}),
@@ -74,8 +74,8 @@ class Tests(GraphTest):
         expected = nx.Graph()
         data = [(0, 1, {'order': 2})]
         expected.add_edges_from(data)
-        data = {0: {'element': 'C', 'charge': 0, 'hcount': 2},
-                1: {'element': 'C', 'charge': 0, 'hcount': 2}}
+        data = {0: {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False},
+                1: {'element': 'C', 'charge': 0, 'hcount': 2, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -89,9 +89,9 @@ class Tests(GraphTest):
                 (0, 2, {'order': 1}),
                 (1, 2, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C', 'hcount': 2},
-                1: {'charge': 0, 'element': 'C', 'hcount': 2},
-                2: {'charge': 0, 'element': 'C', 'hcount': 2}}
+        data = {0: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                2: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -112,12 +112,12 @@ class Tests(GraphTest):
                 (3, 4, {'order': 1.5}),
                 (4, 5, {'order': 1.5})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'c', 'hcount': 1},
-                1: {'charge': 0, 'element': 'c', 'hcount': 1},
-                2: {'charge': 0, 'element': 'c', 'hcount': 1},
-                3: {'charge': 0, 'element': 'c', 'hcount': 1},
-                4: {'charge': 0, 'element': 'c', 'hcount': 1},
-                5: {'charge': 0, 'element': 'c', 'hcount': 1}}
+        data = {0: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True},
+                1: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True},
+                2: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True},
+                3: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True},
+                4: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True},
+                5: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -131,9 +131,9 @@ class Tests(GraphTest):
                 (0, 2, {'order': 2}),
                 (1, 2, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C', 'hcount': 1},
-                1: {'charge': 0, 'element': 'C', 'hcount': 2},
-                2: {'charge': 0, 'element': 'C', 'hcount': 1}}
+        data = {0: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                2: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -160,11 +160,11 @@ class Tests(GraphTest):
                 (1, 3, {'order': 2}),
                 (1, 4, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'O', 'hcount': 1},
-                1: {'charge': 0, 'element': 'S', 'hcount': 0},
-                2: {'charge': 0, 'element': 'O', 'hcount': 0},
-                3: {'charge': 0, 'element': 'S', 'hcount': 0},
-                4: {'charge': 0, 'element': 'O', 'hcount': 1}}
+        data = {0: {'charge': 0, 'element': 'O', 'hcount': 1, 'aromatic': False},
+                1: {'charge': 0, 'element': 'S', 'hcount': 0, 'aromatic': False},
+                2: {'charge': 0, 'element': 'O', 'hcount': 0, 'aromatic': False},
+                3: {'charge': 0, 'element': 'S', 'hcount': 0, 'aromatic': False},
+                4: {'charge': 0, 'element': 'O', 'hcount': 1, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -196,28 +196,28 @@ class Tests(GraphTest):
                 (18, 19, {'order': 1}),
                 (19, 20, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C', 'hcount': 2},
-                1: {'charge': 0, 'element': 'C', 'hcount': 2},
-                2: {'charge': 0, 'element': 'C', 'hcount': 2},
-                3: {'charge': 0, 'element': 'C', 'hcount': 2},
-                4: {'charge': 0, 'element': 'C', 'hcount': 2},
-                5: {'charge': 0, 'element': 'C', 'hcount': 2},
-                6: {'charge': 0, 'element': 'C', 'hcount': 2},
-                7: {'charge': 0, 'element': 'C', 'hcount': 2},
-                8: {'charge': 0, 'element': 'C', 'hcount': 2},
-                9: {'charge': 0, 'element': 'C', 'hcount': 2},
-                10: {'charge': 0, 'element': 'C', 'hcount': 2},
-                11: {'charge': 0, 'element': 'C', 'hcount': 2},
-                12: {'charge': 0, 'element': 'C', 'hcount': 2},
-                13: {'charge': 0, 'element': 'C', 'hcount': 2},
-                14: {'charge': 0, 'element': 'C', 'hcount': 2},
-                15: {'charge': 0, 'element': 'C', 'hcount': 2},
-                16: {'charge': 0, 'element': 'C', 'hcount': 2},
-                17: {'charge': 0, 'element': 'C', 'hcount': 2},
-                18: {'charge': 0, 'element': 'C', 'hcount': 2},
-                19: {'charge': 0, 'element': 'C', 'hcount': 2},
-                20: {'charge': 0, 'element': 'C', 'hcount': 3},
-                21: {'charge': 0, 'element': 'C', 'hcount': 3}}
+        data = {0: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                2: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                3: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                4: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                5: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                6: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                7: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                8: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                9: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                10: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                11: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                12: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                13: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                14: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                15: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                16: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                17: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                18: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                19: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                20: {'charge': 0, 'element': 'C', 'hcount': 3, 'aromatic': False},
+                21: {'charge': 0, 'element': 'C', 'hcount': 3, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -238,15 +238,15 @@ class Tests(GraphTest):
                 (6, 7, {'order': 1}),
                 (7, 8, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'N', 'hcount': 1},
-                1: {'charge': 0, 'element': 'C', 'hcount': 2},
-                2: {'charge': 0, 'element': 'C', 'hcount': 1},
-                3: {'charge': 0, 'element': 'C', 'hcount': 2},
-                4: {'charge': 0, 'element': 'C', 'hcount': 2},
-                5: {'charge': 0, 'element': 'C', 'hcount': 2},
-                6: {'charge': 0, 'element': 'C', 'hcount': 1},
-                7: {'charge': 0, 'element': 'C', 'hcount': 2},
-                8: {'charge': 0, 'element': 'C', 'hcount': 2}}
+        data = {0: {'charge': 0, 'element': 'N', 'hcount': 1, 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                2: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': False},
+                3: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                4: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                5: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                6: {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': False},
+                7: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                8: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -275,24 +275,24 @@ class Tests(GraphTest):
                 (8, 9, {'order': 1.5}),
                 (9, 17, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'c'},
-                1: {'charge': 0, 'element': 'c'},
-                2: {'charge': 0, 'element': 'c'},
-                3: {'charge': 0, 'element': 'c'},
-                4: {'charge': 0, 'element': 'c'},
-                5: {'charge': 0, 'element': 'c'},
-                6: {'charge': 0, 'element': 'c'},
-                7: {'charge': 0, 'element': 'c'},
-                8: {'charge': 0, 'element': 'c'},
-                9: {'charge': 0, 'element': 'c'},
-                10: {'charge': 0, 'element': 'H'},
-                11: {'charge': 0, 'element': 'H'},
-                12: {'charge': 0, 'element': 'H'},
-                13: {'charge': 0, 'element': 'H'},
-                14: {'charge': 0, 'element': 'H'},
-                15: {'charge': 0, 'element': 'H'},
-                16: {'charge': 0, 'element': 'H'},
-                17: {'charge': 0, 'element': 'H'}}
+        data = {0: {'charge': 0, 'element': 'C', 'aromatic': True},
+                1: {'charge': 0, 'element': 'C', 'aromatic': True},
+                2: {'charge': 0, 'element': 'C', 'aromatic': True},
+                3: {'charge': 0, 'element': 'C', 'aromatic': True},
+                4: {'charge': 0, 'element': 'C', 'aromatic': True},
+                5: {'charge': 0, 'element': 'C', 'aromatic': True},
+                6: {'charge': 0, 'element': 'C', 'aromatic': True},
+                7: {'charge': 0, 'element': 'C', 'aromatic': True},
+                8: {'charge': 0, 'element': 'C', 'aromatic': True},
+                9: {'charge': 0, 'element': 'C', 'aromatic': True},
+                10: {'charge': 0, 'element': 'H', 'aromatic': False},
+                11: {'charge': 0, 'element': 'H', 'aromatic': False},
+                12: {'charge': 0, 'element': 'H', 'aromatic': False},
+                13: {'charge': 0, 'element': 'H', 'aromatic': False},
+                14: {'charge': 0, 'element': 'H', 'aromatic': False},
+                15: {'charge': 0, 'element': 'H', 'aromatic': False},
+                16: {'charge': 0, 'element': 'H', 'aromatic': False},
+                17: {'charge': 0, 'element': 'H', 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
@@ -314,17 +314,17 @@ class Tests(GraphTest):
                 (8, 9, {'order': 1}),
                 (9, 10, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'C', 'hcount': 0},
-                1: {'charge': 0, 'element': 'C', 'hcount': 2},
-                2: {'charge': 0, 'element': 'C', 'hcount': 2},
-                3: {'charge': 0, 'element': 'C', 'hcount': 2},
-                4: {'charge': 0, 'element': 'C', 'hcount': 2},
-                5: {'charge': 0, 'element': 'C', 'hcount': 2},
-                6: {'charge': 0, 'element': 'C', 'hcount': 2},
-                7: {'charge': 0, 'element': 'C', 'hcount': 2},
-                8: {'charge': 0, 'element': 'C', 'hcount': 2},
-                9: {'charge': 0, 'element': 'C', 'hcount': 2},
-                10: {'charge': 0, 'element': 'C', 'hcount': 2}}
+        data = {0: {'charge': 0, 'element': 'C', 'hcount': 0, 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                2: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                3: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                4: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                5: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                6: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                7: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                8: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                9: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+                10: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
 
         self.assertEqualGraphs(found, expected)
@@ -336,7 +336,7 @@ class Tests(GraphTest):
         expected = nx.Graph()
         data = []
         expected.add_edges_from(data)
-        data = {1: {'charge': 0, 'element': 'C', 'hcount': 4}}
+        data = {1: {'charge': 0, 'element': 'C', 'hcount': 4, 'aromatic': False}}
         expected.add_nodes_from(data)
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
@@ -346,9 +346,9 @@ class Tests(GraphTest):
         expected = nx.Graph()
         data = [(1, 3, {'order': 1}), (3, 4, {'order': 1})]
         expected.add_edges_from(data)
-        data = {1: {'charge': 0, 'element': 'O', 'hcount': 2},
-                3: {'charge': 0, 'element': 'H', 'hcount': 0},
-                4: {'charge': 0, 'element': 'O', 'hcount': 2}}
+        data = {1: {'charge': 0, 'element': 'O', 'hcount': 2, 'aromatic': False},
+                3: {'charge': 0, 'element': 'H', 'hcount': 0, 'aromatic': False},
+                4: {'charge': 0, 'element': 'O', 'hcount': 2, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
@@ -358,7 +358,7 @@ class Tests(GraphTest):
         found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
-        data = {'charge': -1, 'class': 1, 'element': 'C', 'hcount': 3, 'isotope': 13}
+        data = {'charge': -1, 'class': 1, 'element': 'C', 'hcount': 3, 'isotope': 13, 'aromatic': False}
         expected.add_node(0, **data)
         self.assertEqualGraphs(found, expected)
 
@@ -372,7 +372,7 @@ class Tests(GraphTest):
         found = read_smiles(smiles, explicit_hydrogen=False)
 
         expected = nx.Graph()
-        data = {'charge': 2, 'element': 'Cu', 'hcount': 0}
+        data = {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False}
         expected.add_node(0, **data)
         self.assertEqualGraphs(found, expected)
 
@@ -384,7 +384,7 @@ class Tests(GraphTest):
         smiles = '[Uuo+4]'
         found = read_smiles(smiles, explicit_hydrogen=False)
         expected = nx.Graph()
-        data = {'charge': 4, 'element': 'Uuo', 'hcount': 0}
+        data = {'charge': 4, 'element': 'Uuo', 'hcount': 0, 'aromatic': False}
         expected.add_node(0, **data)
         self.assertEqualGraphs(found, expected)
 
@@ -394,33 +394,33 @@ class Tests(GraphTest):
         expected = nx.Graph()
         data = [(0, 1, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'H', 'hcount': 0, 'isotope': 2},
-                1: {'charge': 0, 'element': 'C', 'hcount': 2}}
+        data = {0: {'charge': 0, 'element': 'H', 'hcount': 0, 'isotope': 2, 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
         smiles = '*'
         found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
-        expected.add_node(0, charge=0)
+        expected.add_node(0, charge=0, aromatic=False)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[*--]'
         found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
-        expected.add_node(0, charge=-2)
+        expected.add_node(0, charge=-2, aromatic=False)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[*-]'
         found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
-        expected.add_node(0, charge=-1)
+        expected.add_node(0, charge=-1, aromatic=False)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[H+]'
         found = read_smiles(smiles, explicit_hydrogen=True)
         expected = nx.Graph()
-        expected.add_node(0, charge=+1, element='H')
+        expected.add_node(0, charge=+1, element='H', aromatic=False)
         self.assertEqualGraphs(found, expected)
 
         smiles = '[CL-]'
@@ -446,16 +446,16 @@ class Tests(GraphTest):
                 (5, 8, {'order': 1}),
                 (5, 9, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': -1, 'element': 'Rh', 'hcount': 0},
-                1: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                2: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                3: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                4: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                5: {'charge': -1, 'element': 'Rh', 'hcount': 0},
-                6: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                7: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                8: {'charge': 0, 'element': 'Cl', 'hcount': 0},
-                9: {'charge': 0, 'element': 'Cl', 'hcount': 0}}
+        data = {0: {'charge': -1, 'element': 'Rh', 'hcount': 0, 'aromatic': False},
+                1: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                2: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                3: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                4: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                5: {'charge': -1, 'element': 'Rh', 'hcount': 0, 'aromatic': False},
+                6: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                7: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                8: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False},
+                9: {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
@@ -473,15 +473,15 @@ class Tests(GraphTest):
                 (3, 7, {'order': 1}),
                 (4, 8, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': 0, 'element': 'c'},
-                1: {'charge': 0, 'element': 'o'},
-                2: {'charge': 0, 'element': 'c'},
-                3: {'charge': 0, 'element': 'c'},
-                4: {'charge': 0, 'element': 'c'},
-                5: {'charge': 0, 'element': 'H'},
-                6: {'charge': 0, 'element': 'H'},
-                7: {'charge': 0, 'element': 'H'},
-                8: {'charge': 0, 'element': 'H'}}
+        data = {0: {'charge': 0, 'element': 'C', 'aromatic': True},
+                1: {'charge': 0, 'element': 'O', 'aromatic': True},
+                2: {'charge': 0, 'element': 'C', 'aromatic': True},
+                3: {'charge': 0, 'element': 'C', 'aromatic': True},
+                4: {'charge': 0, 'element': 'C', 'aromatic': True},
+                5: {'charge': 0, 'element': 'H', 'aromatic': False},
+                6: {'charge': 0, 'element': 'H', 'aromatic': False},
+                7: {'charge': 0, 'element': 'H', 'aromatic': False},
+                8: {'charge': 0, 'element': 'H', 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
@@ -499,23 +499,23 @@ class Tests(GraphTest):
                 (4, 9, {'order': 1}),
                 (4, 10, {'order': 1})]
         expected.add_edges_from(data)
-        data = {0: {'charge': -1, 'element': 'O'},
-                1: {'charge': 0, 'element': 'C'},
-                2: {'charge': 0, 'element': 'O'},
-                3: {'charge': 0, 'element': 'C'},
-                4: {'charge': 0, 'element': 'N'},
-                5: {'charge': 0, 'element': 'H'},
-                6: {'charge': 0, 'element': 'H'},
-                7: {'charge': 0, 'element': 'H'},
-                8: {'charge': 0, 'element': 'H'},
-                9: {'charge': 0, 'element': 'H'},
-                10: {'charge': 0, 'element': 'H'}}
+        data = {0: {'charge': -1, 'element': 'O', 'aromatic': False},
+                1: {'charge': 0, 'element': 'C', 'aromatic': False},
+                2: {'charge': 0, 'element': 'O', 'aromatic': False},
+                3: {'charge': 0, 'element': 'C', 'aromatic': False},
+                4: {'charge': 0, 'element': 'N', 'aromatic': False},
+                5: {'charge': 0, 'element': 'H', 'aromatic': False},
+                6: {'charge': 0, 'element': 'H', 'aromatic': False},
+                7: {'charge': 0, 'element': 'H', 'aromatic': False},
+                8: {'charge': 0, 'element': 'H', 'aromatic': False},
+                9: {'charge': 0, 'element': 'H', 'aromatic': False},
+                10: {'charge': 0, 'element': 'H', 'aromatic': False}}
         nx.set_node_attributes(expected, data)
         self.assertEqualGraphs(found, expected)
 
     @unittest.expectedFailure
     def test_cis_trans(self):
-        smiles = 'F/C=C/F', 'C(\F)=C/F', 'F\C=C/F', 'C(/F)=C/F'
+        smiles = r'F/C=C/F', r'C(\F)=C/F', r'F\C=C/F', r'C(/F)=C/F'
         for smile in smiles:
             read_smiles(smiles, explicit_hydrogen=False)
             self.fail()

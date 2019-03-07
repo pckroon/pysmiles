@@ -1,0 +1,5 @@
+pylint
+pytest
+coverage
+pytest-cov
+coveralls[yaml]
