@@ -14,7 +14,7 @@ SMILES strings are assumed to be as specified by the
 ## Molecules
 Molecules are depicted as [Networkx][networkx] graphs. Atoms are the nodes of
 the graph, and bonds are the edges. Nodes can have the following attributes:
-"element", "isotope", "hcount", "charge", and "class". There is currently no
+"element", "aromatic", "isotope", "hcount", "charge", and "class". There is currently no
 way of specifying stereochemical information, and this is discarded upon
 reading. Somewhere in the future this will probably be stored in the "stereo"
 attribute of nodes. Edges will have an "order" attribute.
@@ -64,13 +64,19 @@ print(write_smiles(mol))
 - The writer produces non-recommended SMILES strings (as per OpenSmiles). In
     addition, it doesn't use the 'hcount' and valence to determine bond orders.
 - There is currently no way of specifying stereochemical information. The parser
-    can deal with it (except for E/Z), but it will be discarded.
+    can deal with it, but it will be discarded.
 - There are not enough tests.
 - It is not on PyPI
-- It only process SMILES. This might later be extended to e.g. InChi, SLN, etc.
+- It only process SMILES. This might later be extended to e.g. InChi, SLN, SMARTS, etc.
 
 ## Requirements
 - [networkx][networkx]
+
+## Similar projects
+There are more python projects that deal with SMILES, and I try to list at least some of them here. If yours is missing, feel free to open up a PR.
+- [PySMILE](https://github.com/jhosmer/PySmile): A similar named project, capable of encoding/decoding SMILE format objects. Doesn't deal with SMILES.
+- [RDKit](https://github.com/rdkit/rdkit): A collection of cheminformatics and machine-learning software, capable of reading and writing SMILES, InChi, and others.
+- [OpenEye Chem toolkit](https://www.eyesopen.com/oechem-tk): The OpenEye chemistry toolkit is a programming library for chemistry and cheminformatics. It is capable of dealing with (canonical) SMILES and InChi.
 
 ## License
 PySmiles is distributed under the Apache 2.0 license.
