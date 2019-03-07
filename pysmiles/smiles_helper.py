@@ -458,7 +458,10 @@ def increment_bond_orders(molecule, max_bond_order=3):
         missing_idx = missing_bonds[idx]
         missing_jdx = missing_bonds[jdx]
         edge_missing = min(missing_idx, missing_jdx)
-        new_order = edge_missing + molecule.edges[idx, jdx].get("order", 1)
+        current_order = molecule.edges[idx, jdx].get("order", 1)
+        if current_order == 1.5:
+            continue
+        new_order = edge_missing + current_order
         new_order = min(new_order, max_bond_order)
         molecule.edges[idx, jdx]['order'] = new_order
         missing_bonds[idx] -= edge_missing
