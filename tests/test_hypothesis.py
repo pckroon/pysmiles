@@ -14,16 +14,16 @@
 # limitations under the License.
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
-                                 initialize, run_state_machine_as_test,
-                                 precondition)
-from hypothesis import example, note, settings
+                                 initialize, precondition)
+from hypothesis import note, settings
 from hypothesis_networkx import graph_builder
 
 from pysmiles import read_smiles
 from pysmiles import write_smiles
-from pysmiles.smiles_helper import (add_explicit_hydrogens,
-    remove_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges,
-    fill_valence, correct_aromatic_rings, increment_bond_orders, )
+from pysmiles.smiles_helper import (
+    add_explicit_hydrogens, remove_explicit_hydrogens, mark_aromatic_atoms,
+    mark_aromatic_edges, fill_valence, correct_aromatic_rings,
+    increment_bond_orders, )
 from pysmiles.testhelper import assertEqualGraphs
 
 
@@ -55,7 +55,7 @@ node_data = st.fixed_dictionaries({
     'isotope': st.one_of(st.none(), isotope),
     'hcount': st.one_of(st.none(), hcount),
     'element': st.one_of(st.none(), element),
-    'charge': st.one_of(st.none(), charge),
+    'charge': charge,  # Charge can not be none for comparison reasons
     'aromatic': st.just(False),
     'class': st.one_of(st.none(), class_)
 }).map(no_none_value).map(no_hydrogen_hcount)
@@ -119,6 +119,11 @@ class SMILESTest(RuleBasedStateMachine):
                 add_explicit_hydrogens(ref_mol)
             else:
                 remove_explicit_hydrogens(ref_mol)
+            # '*' elements may be aromatic, but not detected as such.
+            no_element = {n_idx for n_idx in ref_mol
+                          if ref_mol.nodes[n_idx].get('element', '*') == '*'}
+            mark_aromatic_atoms(ref_mol, atoms=no_element)
+            mark_aromatic_edges(ref_mol)
             found = read_smiles(smiles, explicit_hydrogen=expl_H)
             note(found.nodes(data=True))
             note(found.edges(data=True))

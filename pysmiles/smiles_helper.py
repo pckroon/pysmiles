@@ -434,7 +434,7 @@ def _hydrogen_neighbours(mol, n_idx):
     return h_neighbours
 
 
-def mark_aromatic_atoms(mol):
+def mark_aromatic_atoms(mol, atoms=None):
     """
     Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
     the 'hcount' on atoms is correct.
@@ -443,12 +443,16 @@ def mark_aromatic_atoms(mol):
     ----------
     mol : nx.Graph
         The molecule.
+    atoms: collections.abc.Iterable
+        The atoms to act on. Will still analyse the full molecule.
 
     Returns
     -------
     None
         `mol` is modified in-place.
     """
+    if atoms is None:
+        atoms = set(mol.nodes)
     aromatic = set()
     # Only cycles can be aromatic
     for cycle in nx.cycle_basis(mol):
@@ -481,7 +485,7 @@ def mark_aromatic_atoms(mol):
         if maybe_aromatic and int(electrons) % 2 == 0:
             # definitely (anti) aromatic
             aromatic.update(cycle)
-    for node_idx in mol:
+    for node_idx in atoms:
         node = mol.nodes[node_idx]
         if node_idx not in aromatic:
             node['aromatic'] = False

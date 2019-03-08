@@ -22,7 +22,8 @@ import enum
 import networkx as nx
 
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
-                            parse_atom, fill_valence, mark_aromatic_edges)
+                            parse_atom, fill_valence, mark_aromatic_edges,
+                            mark_aromatic_atoms)
 
 
 @enum.unique
@@ -174,7 +175,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
-    # Time to deal with aromaticity
+    # Time to deal with aromaticity. This is a mess, because it's not super
+    # clear what aromaticity information has been provided, and what should be
+    # inferred. In addition, to what extend do we want to provide a "sane"
+    # molecule, even if this overrides what the SMILES string specifies?
     cycles = nx.cycle_basis(mol)
     ring_idxs = set()
     for cycle in cycles:
@@ -186,9 +190,12 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
                              " ring. This is impossible")
 
     mark_aromatic_edges(mol)
-
     # Add Hydrogens
     fill_valence(mol)
+    no_element = {n_idx for n_idx in mol 
+                  if mol.nodes[n_idx].get('element', '*') == '*'}
+    mark_aromatic_atoms(mol, atoms=no_element)
+    mark_aromatic_edges(mol)
 
     if explicit_hydrogen:
         add_explicit_hydrogens(mol)

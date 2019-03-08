@@ -452,6 +452,26 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (4, 10, {'order': 1})],
         True
     ),
+    (
+        '[*+]1[*][*]1',
+        [(0, {'charge': 1, 'aromatic': True, 'hcount': 0}),
+         (1, {'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (2, {'charge': 0, 'aromatic': True, 'hcount': 0})],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 0, {'order': 1.5}),],
+        False
+    ),
+    (
+        'N1[*][*]1',
+        [(0, {'element': 'N', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (2, {'charge': 0, 'aromatic': True, 'hcount': 0})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1.5}),
+         (2, 0, {'order': 1}),],
+        False
+    )
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     found = read_smiles(smiles, explicit_hydrogen=explicit_h)
