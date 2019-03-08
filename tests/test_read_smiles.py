@@ -15,17 +15,8 @@
 
 import pytest
 
-import networkx as nx
-
 from pysmiles import read_smiles
-from pysmiles.testhelper import assertEqualGraphs
-
-
-def make_mol(node_data, edge_data):
-    mol = nx.Graph()
-    mol.add_nodes_from(node_data)
-    mol.add_edges_from(edge_data)
-    return mol
+from pysmiles.testhelper import assertEqualGraphs, make_mol
 
 
 @pytest.mark.parametrize('smiles, node_data, edge_data, explicit_h', (

@@ -37,7 +37,7 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
 VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
             "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
 
-AROMATIC_ATOMS = "B C N O P S Se As".split()
+AROMATIC_ATOMS = "B C N O P S Se As *".split()
 
 
 def parse_atom(atom):
@@ -315,7 +315,7 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
         if 'hcount' in node and respect_hcount:
             continue
         missing = max(bonds_missing(mol, n_idx), 0)
-        node['hcount'] = missing
+        node['hcount'] = node.get('hcount', 0) + missing
 
 
 def bonds_missing(mol, node_idx, use_order=True):
@@ -424,6 +424,16 @@ def has_default_h_count(mol, node_idx, use_order=True):
     return valence - bonds == hcount
 
 
+def _hydrogen_neighbours(mol, n_idx):
+    neighbours = mol[n_idx]
+    h_neighbours = 0
+    for n_jdx in neighbours:
+        if (mol.nodes[n_jdx].get('element', '*') == 'H' and
+                mol.edges[n_idx, n_jdx].get('order', 1) == 1):
+            h_neighbours += 1
+    return h_neighbours
+
+
 def mark_aromatic_atoms(mol):
     """
     Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
@@ -452,6 +462,7 @@ def mark_aromatic_atoms(mol):
             element = node.get('element', '*').capitalize()
             hcount = node.get('hcount', 0)
             degree = mol.degree(node_idx) + hcount
+            hcount += _hydrogen_neighbours(mol, node_idx)
             # Make sure they are possibly aromatic, and are sp2 hybridized
             if element not in AROMATIC_ATOMS or degree not in (2, 3):
                 maybe_aromatic = False
@@ -472,8 +483,6 @@ def mark_aromatic_atoms(mol):
             aromatic.update(cycle)
     for node_idx in mol:
         node = mol.nodes[node_idx]
-        if 'element' not in node:
-            continue
         if node_idx not in aromatic:
             node['aromatic'] = False
         else:
@@ -483,7 +492,7 @@ def mark_aromatic_atoms(mol):
 def mark_aromatic_edges(mol):
     """
     Set all bonds between aromatic atoms (attribute 'aromatic' is `True`) to
-    1.5.
+    1.5. Gives all other bonds that don't have an order yet an order of 1.
 
     Parameters
     ----------
@@ -502,6 +511,9 @@ def mark_aromatic_edges(mol):
             if (mol.nodes[idx].get('aromatic', False)
                     and mol.nodes[jdx].get('aromatic', False)):
                 mol.edges[idx, jdx]['order'] = 1.5
+    for idx, jdx in mol.edges:
+        if 'order' not in mol.edges[idx, jdx]:
+            mol.edges[idx, jdx]['order'] = 1
 
 
 def correct_aromatic_rings(mol):

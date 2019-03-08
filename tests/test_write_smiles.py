@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import networkx as nx
 import pytest
 
 from pysmiles import write_smiles, read_smiles
-from pysmiles.smiles_helper import correct_aromatic_rings, fill_valence
 from pysmiles.testhelper import assertEqualGraphs, make_mol
 
 
@@ -30,6 +28,16 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         [(0, 1, {'order': 1}),
          (1, 2, {'order': 1}),
          (2, 3, {'order': 1})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (1, 3, {'order': 1})],
         False
     ),
     (
@@ -100,6 +108,26 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (8, 9, {'order': 1.5}),
          (9, 0, {'order': 1.5}),
          (2, 7, {'order': 1.5})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': -1, 'aromatic': False, 'hcount': 3}),
+         (1, {'element': 'Cl', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'Tc', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (3, {'element': 'C', 'charge': 1, 'aromatic': False, 'hcount': 3})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 1})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': -1, 'aromatic': False, 'hcount': 3}),
+         (1, {'element': 'C', 'charge': -2, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'C', 'charge': 5, 'aromatic': False, 'hcount': 2, 'class': 1}),
+         (3, {'element': 'C', 'charge': 1, 'aromatic': False, 'hcount': 3})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 1})],
         False
     ),
 ))
