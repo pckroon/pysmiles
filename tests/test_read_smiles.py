@@ -351,6 +351,32 @@ def test_muffle_H():
     nx.set_node_attributes(expected, data)
     assertEqualGraphs(found, expected)
 
+    smiles = '[H]=C'
+    found = read_smiles(smiles, explicit_hydrogen=False)
+    expected = nx.Graph()
+    data = [(0, 1, {'order': 2})]
+    expected.add_edges_from(data)
+    data = {
+        0: {'charge': 0, 'element': 'H', 'hcount': 0, 'aromatic': False},
+        1: {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False},
+    }
+    nx.set_node_attributes(expected, data)
+    assertEqualGraphs(found, expected)
+
+
+    smiles = '[H][H]'
+    found = read_smiles(smiles, explicit_hydrogen=False)
+    expected = nx.Graph()
+    data = [(0, 1, {'order': 1})]
+    expected.add_edges_from(data)
+    data = {
+        0: {'charge': 0, 'element': 'H', 'hcount': 0, 'aromatic': False},
+        1: {'charge': 0, 'element': 'H', 'hcount': 0, 'aromatic': False},
+    }
+    nx.set_node_attributes(expected, data)
+    assertEqualGraphs(found, expected)
+
+
 def test_atom_spec():
     # Little bit of everything
     smiles = '[013CH3-1:1]'
@@ -429,6 +455,15 @@ def test_atom_spec():
     smiles = '[HH]'
     with pytest.raises(ValueError):
         read_smiles(smiles, explicit_hydrogen=False)
+
+    smiles = '[cH-1]1[cH-1][cH-1]1'
+    found = read_smiles(smiles)
+    expected = nx.Graph()
+    expected.add_node(0, element='C', aromatic=True, charge=-1, hcount=1)
+    expected.add_node(1, element='C', aromatic=True, charge=-1, hcount=1)
+    expected.add_node(2, element='C', aromatic=True, charge=-1, hcount=1)
+    expected.add_edges_from([(0, 1), (1, 2), (2, 0)], order=1.5)
+    assertEqualGraphs(found, expected)
 
 def test_rhodium():
     smiles = '[Rh-](Cl)(Cl)(Cl)(Cl)$[Rh-](Cl)(Cl)(Cl)Cl'
