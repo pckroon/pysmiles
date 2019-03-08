@@ -168,7 +168,7 @@ def write_smiles(molecule, default_element='*', start=None):
                 else:
                     marker = ring_idx_to_marker.pop(ring_idx)
                     new_marker = False
-    
+
                 if _write_edge_symbol(molecule, *ring_bond) and new_marker:
                     order = molecule.edges[ring_bond].get('order', 1)
                     smiles += order_to_symbol[order]

@@ -156,7 +156,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
                 if mol.has_edge(idx-1, jdx):
                     raise ValueError('Edge specified by marker {} already '
                                      'exists'.format(token))
-                elif idx-1 == jdx:
+                if idx-1 == jdx:
                     raise ValueError('Marker {} specifies a bond between an '
                                      'atom and itself'.format(token))
                 if next_bond or zero_order_bonds:
@@ -192,7 +192,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     mark_aromatic_edges(mol)
     # Add Hydrogens
     fill_valence(mol)
-    no_element = {n_idx for n_idx in mol 
+    no_element = {n_idx for n_idx in mol
                   if mol.nodes[n_idx].get('element', '*') == '*'}
     mark_aromatic_atoms(mol, atoms=no_element)
     mark_aromatic_edges(mol)
