@@ -22,6 +22,13 @@ import unittest
 import networkx as nx
 
 
+def make_mol(node_data, edge_data):
+    mol = nx.Graph()
+    mol.add_nodes_from(node_data)
+    mol.add_edges_from(edge_data)
+    return mol
+
+
 def assertEqualGraphs(graph1, graph2):  # pylint: disable=invalid-name
     """
     Asserts that `graph1` and `graph2` are equal up to isomorphism.

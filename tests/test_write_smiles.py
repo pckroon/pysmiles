@@ -14,79 +14,97 @@
 # limitations under the License.
 
 import networkx as nx
+import pytest
 
 from pysmiles import write_smiles, read_smiles
 from pysmiles.smiles_helper import correct_aromatic_rings, fill_valence
-from pysmiles.testhelper import assertEqualGraphs
+from pysmiles.testhelper import assertEqualGraphs, make_mol
 
 
-def test_simple():
-    mol = nx.Graph()
-    nx.add_path(mol, range(4), order=1)
-    for n_idx in mol:
-        mol.nodes[n_idx].update(element='C', charge=0, aromatic=False)
-    fill_valence(mol)
-
+@pytest.mark.parametrize('node_data, edge_data, expl_h', (
+    (
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 1})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3})],
+        [(0, 1, {'order': 2}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 1}),
+         (3, 4, {'order': 2})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (6, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1})],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 0, {'order': 1.5}),
+         (3, 6, {'order': 1})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (4, {'element': 'O', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (6, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0})],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 0, {'order': 1.5}),
+         (3, 6, {'order': 2})],
+        False
+    ),
+    (
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (7, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (8, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (9, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 6, {'order': 1.5}),
+         (6, 7, {'order': 1.5}),
+         (7, 8, {'order': 1.5}),
+         (8, 9, {'order': 1.5}),
+         (9, 0, {'order': 1.5}),
+         (2, 7, {'order': 1.5})],
+        False
+    ),
+))
+def test_write_smiles(node_data, edge_data, expl_h):
+    mol = make_mol(node_data, edge_data)
     smiles = write_smiles(mol)
-    found = read_smiles(smiles)
+    found = read_smiles(smiles, explicit_hydrogen=expl_h)
     assertEqualGraphs(mol, found)
-
-def test_hetero():
-    mol2 = nx.Graph()
-    mol2.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4)], order=1)
-    for idx, (ele, count) in enumerate(zip('CCOCC', (3, 0, 0, 2, 3))):
-        mol2.nodes[idx]['element'] = ele
-        mol2.nodes[idx]['hcount'] = count
-        mol2.nodes[idx]['charge'] = 0
-        mol2.nodes[idx]['aromatic'] = False
-    mol2.edges[1, 2]['order'] = 2
-
-    smiles = write_smiles(mol2)
-    found = read_smiles(smiles)
-    assertEqualGraphs(found, mol2)
-
-def test_cycle():
-    mol = nx.cycle_graph(6)
-    mol.add_edge(3, 6, order=1)
-    for node_key in mol:
-        mol.nodes[node_key]['element'] = 'C'
-        mol.nodes[node_key]['charge'] = 0
-        mol.nodes[node_key]['aromatic'] = True
-    mol.nodes[6]['element'] = 'O'
-    for edge in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)]:
-        mol.edges[edge]['order'] = 1.5
-    fill_valence(mol)
-    correct_aromatic_rings(mol)
-    smiles = write_smiles(mol)
-    found = read_smiles(smiles)
-    assertEqualGraphs(mol, found)
-
-def test_aromatic():
-    mol = nx.Graph()
-    mol.add_edges_from([(0, 1), (1, 2), (1, 3), (3, 4), (1, 5), (3, 6)], order=1)
-    for idx, ele in enumerate('CCCCOCO'):
-        mol.nodes[idx]['element'] = ele
-        mol.nodes[idx]['charge'] = 0
-        mol.nodes[idx]['aromatic'] = False
-    mol.nodes[4]['charge'] = -1
-    mol.nodes[4]['hcount'] = 0
-    mol.edges[3, 6]['order'] = 2
-    fill_valence(mol)
-    correct_aromatic_rings(mol)
-    smiles = write_smiles(mol)
-    found = read_smiles(smiles)
-    assertEqualGraphs(found, mol)
-
-def test_multiring():
-    mol = nx.Graph()
-    nx.add_cycle(mol, range(6), order=1.5)
-    nx.add_cycle(mol, range(6, 12), order=1.5)
-    mol.add_edge(5, 7, order=1)
-    for n_idx in mol:
-        mol.nodes[n_idx]['element'] = 'C'
-        mol.nodes[n_idx]['charge'] = 0
-    fill_valence(mol)
-    correct_aromatic_rings(mol)
-    smiles = write_smiles(mol)
-    found = read_smiles(smiles)
-    assertEqualGraphs(found, mol)
