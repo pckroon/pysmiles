@@ -37,7 +37,7 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
 VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
             "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
 
-AROMATIC_ATOMS = "B C N O P S Se As".split()
+AROMATIC_ATOMS = "B C N O P S Se As *".split()
 
 
 def parse_atom(atom):
@@ -130,7 +130,7 @@ def format_atom(molecule, node_key, default_element='*'):
     isotope = node.get('isotope', '')
     class_ = node.get('class', '')
     aromatic = node.get('aromatic', False)
-    valence = bonds_missing(molecule, node_key)
+    default_h = has_default_h_count(molecule, node_key)
 
     if stereo is not None:
         raise NotImplementedError
@@ -138,8 +138,8 @@ def format_atom(molecule, node_key, default_element='*'):
     if aromatic:
         name = name.lower()
 
-    if stereo is None and isotope == '' and charge == 0 and valence == 0 and\
-            name.lower() in 'b c n o p s se as'.split():
+    if (stereo is None and isotope == '' and charge == 0 and default_h and
+            class_ == '' and name.lower() in 'b c n o p s se as'.split()):
         return name
 
     if hcount:
@@ -260,18 +260,26 @@ def remove_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     to_remove = set()
-    defaults = parse_atom('[H]')
+#    defaults = parse_atom('[H]')
     for n_idx in mol.nodes:
         node = mol.nodes[n_idx]
-        neighbors = mol[n_idx]
-        if node == defaults and len(neighbors) == 1:
-            neighbor = list(neighbors.keys())[0]
-            if mol.nodes[neighbor]['element'] == 'H':
-                # The molecule is H2.
+        neighbors = list(mol[n_idx])
+        # TODO: get these defaults from parsing [H]. But do something smart
+        #       with the hcount attribute.
+        if (node.get('charge', 0) == 0 and node.get('element', '') == 'H' and
+                'isotope' not in node and node.get('class', 0) == 0 and
+                len(neighbors) == 1):
+            neighbor = neighbors[0]
+            if (mol.nodes[neighbor].get('element', '') == 'H' or
+                    mol.edges[n_idx, neighbor].get('order', 1) != 1):
+                # The molecule is H2, or the bond order is not 1.
                 continue
             to_remove.add(n_idx)
             mol.nodes[neighbor]['hcount'] = mol.nodes[neighbor].get('hcount', 0) + 1
     mol.remove_nodes_from(to_remove)
+    for n_idx in mol.nodes:
+        if 'hcount' not in mol.nodes[n_idx]:
+            mol.nodes[n_idx]['hcount'] = 0
 
 
 def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
@@ -307,14 +315,13 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
         if 'hcount' in node and respect_hcount:
             continue
         missing = max(bonds_missing(mol, n_idx), 0)
-        node['hcount'] = missing
+        node['hcount'] = node.get('hcount', 0) + missing
 
 
 def bonds_missing(mol, node_idx, use_order=True):
     """
     Returns how much the specified node is under valence. If use_order is
-    False, treat all bonds as if they are order 1. Returns `hcount` if it is
-    set for the node.
+    False, treat all bonds as if they are order 1.
 
     Parameters
     ----------
@@ -330,26 +337,104 @@ def bonds_missing(mol, node_idx, use_order=True):
     int
         The number of missing bonds.
     """
-    node = mol.nodes[node_idx]
-    element = node.get('element').capitalize()
+    bonds = _bonds(mol, node_idx, use_order)
+    bonds += mol.nodes[node_idx].get('hcount', 0)
+    valence = _valence(mol, node_idx, bonds)
+    return int(valence - bonds)
+
+
+def _valence(mol, node_idx, minimum=0):
+    """
+    Returns the valence of the specified node. Since some elements can have
+    multiple valences, give the smallest one that is more than `minimum`.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    minimum : int
+        The minimum value of valence.
+
+    Returns
+    -------
+    int
+        The smallest valence of node more than `minimum`.
+    """
+    element = mol.nodes[node_idx].get('element', '').capitalize()
     if element not in VALENCES:
         return 0
     val = VALENCES.get(element)
+    try:
+        val = min(filter(lambda a: a >= minimum, val))
+    except ValueError:  # More bonds than possible
+        val = max(val)
+    return val
+
+
+def _bonds(mol, node_idx, use_order=True):
+    """
+    Returns how many explicit bonds the specified node has. If use_order is
+    False, treat all bonds as if they are order 1.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    use_order : bool
+        If False, treat all bonds as single.
+
+    Returns
+    -------
+    int
+        The number of bonds.
+    """
     if use_order:
         bond_orders = map(operator.itemgetter(2),
                           mol.edges(nbunch=node_idx, data='order', default=1))
         bonds = sum(bond_orders)
     else:
         bonds = len(mol[node_idx])
-    bonds += node.get('hcount', 0)
-    try:
-        val = min(filter(lambda a: a >= bonds, val))
-    except ValueError:  # More bonds than possible
-        val = max(val)
-    return int(val - bonds)
+    return bonds
 
 
-def mark_aromatic_atoms(mol):
+def has_default_h_count(mol, node_idx, use_order=True):
+    """
+    Returns whether the hydrogen count for this atom is non-standard.
+
+    Parameters
+    ----------
+    mol : nx.Graph
+        The molecule.
+    node_idx : hashable
+        The node to look at. Should be in mol.
+    use_order : bool
+        If False, treat all bonds as single.
+
+    Returns
+    -------
+    bool
+    """
+    bonds = _bonds(mol, node_idx, use_order)
+    valence = _valence(mol, node_idx, bonds)
+    hcount = mol.nodes[node_idx].get('hcount', 0)
+    return valence - bonds == hcount
+
+
+def _hydrogen_neighbours(mol, n_idx):
+    neighbours = mol[n_idx]
+    h_neighbours = 0
+    for n_jdx in neighbours:
+        if (mol.nodes[n_jdx].get('element', '*') == 'H' and
+                mol.edges[n_idx, n_jdx].get('order', 1) == 1):
+            h_neighbours += 1
+    return h_neighbours
+
+
+def mark_aromatic_atoms(mol, atoms=None):
     """
     Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
     the 'hcount' on atoms is correct.
@@ -358,12 +443,16 @@ def mark_aromatic_atoms(mol):
     ----------
     mol : nx.Graph
         The molecule.
+    atoms: collections.abc.Iterable
+        The atoms to act on. Will still analyse the full molecule.
 
     Returns
     -------
     None
         `mol` is modified in-place.
     """
+    if atoms is None:
+        atoms = set(mol.nodes)
     aromatic = set()
     # Only cycles can be aromatic
     for cycle in nx.cycle_basis(mol):
@@ -374,9 +463,10 @@ def mark_aromatic_atoms(mol):
 
         for node_idx in cycle:
             node = mol.nodes[node_idx]
-            element = node['element'].capitalize()
+            element = node.get('element', '*').capitalize()
             hcount = node.get('hcount', 0)
             degree = mol.degree(node_idx) + hcount
+            hcount += _hydrogen_neighbours(mol, node_idx)
             # Make sure they are possibly aromatic, and are sp2 hybridized
             if element not in AROMATIC_ATOMS or degree not in (2, 3):
                 maybe_aromatic = False
@@ -395,7 +485,7 @@ def mark_aromatic_atoms(mol):
         if maybe_aromatic and int(electrons) % 2 == 0:
             # definitely (anti) aromatic
             aromatic.update(cycle)
-    for node_idx in mol:
+    for node_idx in atoms:
         node = mol.nodes[node_idx]
         if node_idx not in aromatic:
             node['aromatic'] = False
@@ -406,7 +496,7 @@ def mark_aromatic_atoms(mol):
 def mark_aromatic_edges(mol):
     """
     Set all bonds between aromatic atoms (attribute 'aromatic' is `True`) to
-    1.5.
+    1.5. Gives all other bonds that don't have an order yet an order of 1.
 
     Parameters
     ----------
@@ -425,6 +515,9 @@ def mark_aromatic_edges(mol):
             if (mol.nodes[idx].get('aromatic', False)
                     and mol.nodes[jdx].get('aromatic', False)):
                 mol.edges[idx, jdx]['order'] = 1.5
+    for idx, jdx in mol.edges:
+        if 'order' not in mol.edges[idx, jdx]:
+            mol.edges[idx, jdx]['order'] = 1
 
 
 def correct_aromatic_rings(mol):
