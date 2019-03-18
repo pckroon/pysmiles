@@ -85,9 +85,11 @@ class SMILESTest(RuleBasedStateMachine):
     def remove_explicit_hydrogens(self):
         remove_explicit_hydrogens(self.mol)
 
-    @rule()
-    def correct_aromatic_rings(self):
-        correct_aromatic_rings(self.mol)
+    # We can't run this halfway through, because aromaticity does not always get
+    # encoded in the SMILES string. In particular when * elements are involved.
+    # @rule()
+    # def correct_aromatic_rings(self):
+    #     correct_aromatic_rings(self.mol)
 
     @rule()
     def fill_valence(self):
@@ -119,12 +121,8 @@ class SMILESTest(RuleBasedStateMachine):
                 add_explicit_hydrogens(ref_mol)
             else:
                 remove_explicit_hydrogens(ref_mol)
-            # '*' elements may be aromatic, but not detected as such.
-            no_element = {n_idx for n_idx in ref_mol
-                          if ref_mol.nodes[n_idx].get('element', '*') == '*'}
-            mark_aromatic_atoms(ref_mol, atoms=no_element)
-            mark_aromatic_edges(ref_mol)
-            found = read_smiles(smiles, explicit_hydrogen=expl_H)
+            found = read_smiles(smiles, explicit_hydrogen=expl_H,
+                                reinterpret_aromatic=False)
             note(found.nodes(data=True))
             note(found.edges(data=True))
             assertEqualGraphs(ref_mol, found)
