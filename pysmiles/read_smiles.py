@@ -90,7 +90,8 @@ def _tokenize(smiles):
             yield TokenType.RING_NUM, int(char)
 
 
-def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
+def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True, 
+                reinterpret_aromatic=True):
     """
     Parses a SMILES string.
 
@@ -102,6 +103,9 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
     explicit_hydrogen : bool
         Whether hydrogens should be explicit nodes in the outout graph, or be
         implicit in 'hcount' attributes.
+    reinterprit_aromatic : bool
+        Whether aromaticity should be determined from the created molecule,
+        instead of taken from the SMILES string.
 
     Returns
     -------
@@ -188,14 +192,17 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True):
         if mol.nodes[n_idx].get('aromatic', False):
             raise ValueError("You specified an aromatic atom outside of a"
                              " ring. This is impossible")
-
+    
     mark_aromatic_edges(mol)
-    # Add Hydrogens
     fill_valence(mol)
-    no_element = {n_idx for n_idx in mol
-                  if mol.nodes[n_idx].get('element', '*') == '*'}
-    mark_aromatic_atoms(mol, atoms=no_element)
-    mark_aromatic_edges(mol)
+    if reinterpret_aromatic:
+        mark_aromatic_atoms(mol)
+        mark_aromatic_edges(mol)
+        for idx, jdx in mol.edges:
+            if ((not mol.nodes[idx].get('aromatic', False) or
+                    not mol.nodes[jdx].get('aromatic', False))
+                    and mol.edges[idx, jdx].get('order', 1) == 1.5):
+                mol.edges[idx, jdx]['order'] = 1
 
     if explicit_hydrogen:
         add_explicit_hydrogens(mol)

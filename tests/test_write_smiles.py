@@ -134,5 +134,5 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
 def test_write_smiles(node_data, edge_data, expl_h):
     mol = make_mol(node_data, edge_data)
     smiles = write_smiles(mol)
-    found = read_smiles(smiles, explicit_hydrogen=expl_h)
+    found = read_smiles(smiles, explicit_hydrogen=expl_h, reinterpret_aromatic=False)
     assertEqualGraphs(mol, found)

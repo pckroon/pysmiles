@@ -139,7 +139,7 @@ def format_atom(molecule, node_key, default_element='*'):
         name = name.lower()
 
     if (stereo is None and isotope == '' and charge == 0 and default_h and
-            class_ == '' and name.lower() in 'b c n o p s se as'.split()):
+            class_ == '' and name.lower() in 'b c n o p s se as *'.split()):
         return name
 
     if hcount:
