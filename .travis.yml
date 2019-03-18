@@ -53,7 +53,7 @@ jobs:
           script: skip
           deploy:
             provider: pypi
-            server: https://testpypi.python.org/pypi
+            server: https://test.pypi.org/legacy/
             user: pckroon
             password:
               secure: 2fE15bz83DqUJWKhyS/jl29T2Bdkfw6u/CfNOf4n9AXZwKUYfd4LYbxh3rWlhOWmxFDhaNStHdZvYddGIjHj5gvz7uMI7tB/2tx3t5FifqQ7OZqfxS69YsVRLl7H0Ty5oifSJBvrIGEbzM9KKQUrP/y/gcFK/hHJNV3n8eGof5+6PmKjwZxiI4uAHhmsK2U4J8PSg5RXNQxbvLNUgAPjYMn/GKIL/75+yEGO/5H2u+zokISjKTs1WAYD5dDIa89h+QD/WrMh9n+oLtjkvrtsj3RJnwKYs2qeHmdZSQe4KKmlR+pVBOA+Tlzp01a1uznk7LfwSUcSE9Fn7D6WbZEZaimEqxPKrEwNHDLfVi7Y/qXWRU9jqvOkInmTLB2hMWteg/0kqtGBV1KYaOCvYAHR7loiF6xtiY6uTWHsKyrC4T9Y9j9839FsQOGN7l2BJn404Hzao9RSksPSX9TfC9el0YfLwmS3WwsYDo4JD5EHmikTfD/ux2t64qwSS0m1rWVg5QYFz5lgEK0gVGDeq4iSo3ZXqiGn7aCLrTohId1uEVA4pgDaun2pZeTUCYHsO6BAGGnMcdahpN4DQtzB/B1pIgH1nbQ79fbwECxp/58JZ/aR9WvfZQB9G0yQH9tL1Sv4bo7W5HBj/aWNlKUznBw1tXGu5ECK0YucRsJvxFkI39g=
