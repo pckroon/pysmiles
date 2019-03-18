@@ -16,6 +16,11 @@ script:
 after_success:
     - if [[ ${COVERALLS} == true ]]; then coveralls; fi
 
+branches:
+  only:
+  - master
+  - /^v\d+\.\d+(\.\d+)?(\.0(a|b|c)\d+)?(\.dev\d+)?$/  # Tags
+
 jobs:
     fast_finish: true
     allow_failures:
@@ -37,10 +42,20 @@ jobs:
 
         - stage: pylint
           python: "3.7"
-          addons: skip
-          install:
-            - pip install --upgrade -r requirements-test.txt
-            - pip install --upgrade .
           script:
             - python run_pylint.py --disable=fixme --fail-under=9.5 pysmiles
           after_success: skip
+
+        - stage: deploy
+          python: "3.7"
+          env: COVERALLS=false
+          before_script: skip
+          script: skip
+          deploy:
+            user: pckroon
+            password:
+              secure: hZ3wetU8fU24cCZ9VMq+ZJ9yyGnS6EzrA6jZ3KoHUI+3Z2jj2V6IqZVdo9WFG9AbI23DC1bvVj4/8hAdRwzLclkeXo05gotysNM+WlzpJpBtoIMpXn3OKzIkU/LScKP/IDu0EvapzmSUM4Q5qonmw46ybhRNNFdzvDRO2v1FYSjMaAuLtNdwjkXiBnU524tB71lx8/rjK4HZamxXYtAQbISaxWOxnu8gDwFcB7Ed58P823FHlEOhDi8qmI65p70KqWbzmCKF7O2PEY7JnUgFhjRkTcHIMzwYA6iUlGYQMs8jQRtHOlZCIcZItt3koFssNQ9jPBA/RpMHREiNObxra2m/xjv2r/Pneb9Nk2RFX9pn3x3+kglUOIXltTDYEDRv98xnP8O39Y4F+/Bx4s2E8C5FhNbcD1DAHqFppIihzRd/d+csVuChRLMYLwTG3GvPlaK4lSb2LlkDlTBrB6FvOYmAiMg39oiuAnPP5JObV8MP/0mE5B8ex/D0lkv9xUgNZE11uSqmqLzpu2wDG8VPo+FCNX/1UlULBGePeZMsH6SpUuzHyDYhcIMtarXGwanNIecWHgKGVBPGry4Ef5KGhinxAYJqmDXOcec2e3uRrV3jR8LUKJuoEO9eUL0wljunvmlW7xrLb/EfIpI+/CF4Ets+t0gUvJ5jbZBZ+kXYl2Q=
+            provider: pypi
+            on:
+              tags: true
+
