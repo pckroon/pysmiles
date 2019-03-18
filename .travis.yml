@@ -48,9 +48,9 @@ jobs:
 
         - stage: deploy
           python: "3.7"
+          env: COVERALLS=false
           before_script: skip
           script: skip
-          after_success: skip
           deploy:
             user: pckroon
             password:
