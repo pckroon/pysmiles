@@ -52,10 +52,11 @@ jobs:
           before_script: skip
           script: skip
           deploy:
+            provider: pypi
+            server: https://testpypi.python.org/pypi
             user: pckroon
             password:
-              secure: hZ3wetU8fU24cCZ9VMq+ZJ9yyGnS6EzrA6jZ3KoHUI+3Z2jj2V6IqZVdo9WFG9AbI23DC1bvVj4/8hAdRwzLclkeXo05gotysNM+WlzpJpBtoIMpXn3OKzIkU/LScKP/IDu0EvapzmSUM4Q5qonmw46ybhRNNFdzvDRO2v1FYSjMaAuLtNdwjkXiBnU524tB71lx8/rjK4HZamxXYtAQbISaxWOxnu8gDwFcB7Ed58P823FHlEOhDi8qmI65p70KqWbzmCKF7O2PEY7JnUgFhjRkTcHIMzwYA6iUlGYQMs8jQRtHOlZCIcZItt3koFssNQ9jPBA/RpMHREiNObxra2m/xjv2r/Pneb9Nk2RFX9pn3x3+kglUOIXltTDYEDRv98xnP8O39Y4F+/Bx4s2E8C5FhNbcD1DAHqFppIihzRd/d+csVuChRLMYLwTG3GvPlaK4lSb2LlkDlTBrB6FvOYmAiMg39oiuAnPP5JObV8MP/0mE5B8ex/D0lkv9xUgNZE11uSqmqLzpu2wDG8VPo+FCNX/1UlULBGePeZMsH6SpUuzHyDYhcIMtarXGwanNIecWHgKGVBPGry4Ef5KGhinxAYJqmDXOcec2e3uRrV3jR8LUKJuoEO9eUL0wljunvmlW7xrLb/EfIpI+/CF4Ets+t0gUvJ5jbZBZ+kXYl2Q=
-            provider: pypi
+              secure: 2fE15bz83DqUJWKhyS/jl29T2Bdkfw6u/CfNOf4n9AXZwKUYfd4LYbxh3rWlhOWmxFDhaNStHdZvYddGIjHj5gvz7uMI7tB/2tx3t5FifqQ7OZqfxS69YsVRLl7H0Ty5oifSJBvrIGEbzM9KKQUrP/y/gcFK/hHJNV3n8eGof5+6PmKjwZxiI4uAHhmsK2U4J8PSg5RXNQxbvLNUgAPjYMn/GKIL/75+yEGO/5H2u+zokISjKTs1WAYD5dDIa89h+QD/WrMh9n+oLtjkvrtsj3RJnwKYs2qeHmdZSQe4KKmlR+pVBOA+Tlzp01a1uznk7LfwSUcSE9Fn7D6WbZEZaimEqxPKrEwNHDLfVi7Y/qXWRU9jqvOkInmTLB2hMWteg/0kqtGBV1KYaOCvYAHR7loiF6xtiY6uTWHsKyrC4T9Y9j9839FsQOGN7l2BJn404Hzao9RSksPSX9TfC9el0YfLwmS3WwsYDo4JD5EHmikTfD/ux2t64qwSS0m1rWVg5QYFz5lgEK0gVGDeq4iSo3ZXqiGn7aCLrTohId1uEVA4pgDaun2pZeTUCYHsO6BAGGnMcdahpN4DQtzB/B1pIgH1nbQ79fbwECxp/58JZ/aR9WvfZQB9G0yQH9tL1Sv4bo7W5HBj/aWNlKUznBw1tXGu5ECK0YucRsJvxFkI39g=
             on:
               tags: true
 
