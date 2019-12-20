@@ -1,3 +1,7 @@
+# Comes from hypothesis, but is not automatically picked up by
+# pip. See pypa/pip#7135 and pypa/pip#988
+attrs >= 19.2.0
+
 pylint
 pytest
 coverage
