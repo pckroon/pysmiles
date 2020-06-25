@@ -497,12 +497,16 @@ def test_invalid_smiles(smiles, error_type):
         read_smiles(smiles)
 
 
-def test_cis_trans():
-    smiles = r'F/C=C/F', r'C(\F)=C/F', r'F\C=C/F', r'C(/F)=C/F'
-    for smile in smiles:
-        read_smiles(smile, explicit_hydrogen=False)
-
-
-def test_extended_stereo():
-    smiles = 'NC(Br)=[C@]=C(O)C'
-    read_smiles(smiles)
+@pytest.mark.parametrize('smiles, n_records',[
+    (r'F/C=C/F', 2),
+    (r'C(\F)=C/F', 2),
+    (r'F\C=C/F', 2),
+    (r'C(/F)=C/F', 2),
+    ('NC(Br)=[C@]=C(O)C', 1),
+    ('c1ccccc1', 0)
+])
+def test_stereo_logging(caplog, smiles, n_records):
+    read_smiles(smiles, explicit_hydrogen=False)
+    assert len(caplog.records) == n_records
+    for record in caplog.records:
+        assert record.levelname == "WARNING"

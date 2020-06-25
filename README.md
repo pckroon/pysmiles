@@ -53,6 +53,25 @@ element attribute.
     of 1.5. If `False`, will create a molecule using *only* the information in 
     the SMILES string.
 
+### Stereochemical information
+Currently the library cannot handle stereochemical information, neither E/Z nor
+R/S. Any stereochemical information that was in the SMILES string will be
+*discarded* upon parsing. This means there will be no difference between
+parsing *e.g.* `N[C@](Br)(O)C`, `N[C@@](Br)(O)C` and `NC(Br)(O)C`. Parsing
+these *will result in the same molecule*. The same holds for *e.g.* `F/C=C/F`
+and `FC=CF`. These will result in the same molecule.
+
+Whenever stereochemical information is being discarded a warning will be
+logged using the built-in `logging` module. If you want to disable all the
+messages logged by `pysmiles` you can add the following snippet to your code,
+without interfering with any logging by your own code:
+
+```python
+import logging
+logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than warning
+```
+
+
 ## Writing SMILES
 The function `write_smiles(molecule, default_element='*', start=None)` can be
 used to write SMILES strings from a molecule. The function does *not* check 
@@ -196,7 +215,6 @@ print(write_smiles(mol))
 - `correct_aromatic_rings` is fragile.
 - There is currently no way of specifying stereo chemical information. The 
     parser can deal with it, but it will be discarded.
-- It is not on PyPI
 - It only processes SMILES. This might later be extended to e.g. InChi, SLN,
     SMARTS, etc.
 
