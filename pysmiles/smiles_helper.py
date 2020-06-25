@@ -18,10 +18,13 @@ Contains helper functions for parsing and writing SMILES strings, as well as
 some convenience functions for adding hydrogens, and detecting aromaticity.
 """
 
+import logging
 import re
 import operator
 
 import networkx as nx
+
+LOGGER = logging.getLogger(__name__)
 
 ISOTOPE_PATTERN = r'(?P<isotope>[\d]+)?'
 ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|\*|[A-Z][a-z]{0,2})'
@@ -98,7 +101,7 @@ def parse_atom(atom):
         raise ValueError("A hydrogen atom can't have hydrogens")
 
     if 'stereo' in out:
-        print("I don't quite know how to handle stereo yet...")
+        LOGGER.warning('Atom "%s" contains stereochemical information that will be discarded.', atom)
 
     return out
 

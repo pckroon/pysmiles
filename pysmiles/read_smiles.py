@@ -18,6 +18,7 @@ Exposes functionality needed for parsing SMILES strings.
 """
 
 import enum
+import logging
 
 import networkx as nx
 
@@ -25,6 +26,7 @@ from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
                             parse_atom, fill_valence, mark_aromatic_edges,
                             mark_aromatic_atoms)
 
+LOGGER = logging.getLogger(__name__)
 
 @enum.unique
 class TokenType(enum.Enum):
@@ -175,7 +177,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
         elif tokentype == TokenType.EZSTEREO:
-            print("I can't deal with stereo yet...")
+            LOGGER.warning('E/Z stereochemical information, which is specified by "%s", will be discarded', token)
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
