@@ -93,7 +93,7 @@ def _tokenize(smiles):
 
 
 def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True, 
-                reinterpret_aromatic=True):
+                reinterpret_aromatic=True, silent=False):
     """
     Parses a SMILES string.
 
@@ -176,7 +176,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
-        elif tokentype == TokenType.EZSTEREO:
+        elif tokentype == TokenType.EZSTEREO and silent==False:
             LOGGER.warning('E/Z stereochemical information, which is specified by "%s", will be discarded', token)
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
