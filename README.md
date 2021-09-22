@@ -6,7 +6,7 @@
 This is a small project I started because I couldn't find any SMILES reader or
 writer that was easy to install (read: Python only). Currently, the writer is
 extremely basic, and although it should produce valid SMILES they won't be
-pretty. The reader is in a better state, and should be usable.
+pretty, but see also issue #17. The reader is in a better state, and should be usable.
 
 SMILES strings are assumed to be as specified by the
 [OpenSmiles standard][opensmiles].
@@ -211,6 +211,10 @@ print(write_smiles(mol))
 
 ## Limitations
 - The writer produces non-recommended SMILES strings (as per OpenSmiles).
+- The writer is better described as a "serializer": if the graph provided
+    doesn't make chemical sense the produced "SMILES" string will be an
+    exact representation of that graph. Because of this, the SMILES string
+    will be invalid though.
 - `fill_valence` does not use 'charge' to find the correct valence.
 - `correct_aromatic_rings` is fragile.
 - There is currently no way of specifying stereo chemical information. The 
