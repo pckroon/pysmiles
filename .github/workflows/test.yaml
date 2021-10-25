@@ -1,0 +1,59 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: test package
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+env:
+  SKIP_GENERATE_AUTHORS: 1
+  SKIP_WRITE_GIT_CHANGELOG: 1
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+       py_version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.py_version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.py_version }}
+    - name: Install dependencies
+      run: |
+        pip install --upgrade setuptools pip
+    - name: Install package and requirements
+      run: |
+        pip install --upgrade .
+        pip install -r requirements-tests.txt
+    - name: Run pytest with codecoverage
+      run: |
+        coverage run --source=pysmiles $(which pytest) --hypothesis-show-statistics
+        coverage report
+        coveralls
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        pip install --upgrade setuptools pip
+        pip install -r requirements-tests.txt
+        pip install --upgrade .
+    - name: Run pylint
+      run: |
+         pylint --disable=fixme --fail-under=8.0 pysmiles tests
