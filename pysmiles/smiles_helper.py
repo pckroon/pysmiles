@@ -27,7 +27,7 @@ import networkx as nx
 LOGGER = logging.getLogger(__name__)
 
 ISOTOPE_PATTERN = r'(?P<isotope>[\d]+)?'
-ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|as|se|\*|[A-Z][a-z]{0,2})'
+ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|\*|[A-Z][a-z]{0,2})'
 STEREO_PATTERN = r'(?P<stereo>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
                   r'@TB[\d]{1,2})?'
 HCOUNT_PATTERN = r'(?P<hcount>H[\d]?)?'
