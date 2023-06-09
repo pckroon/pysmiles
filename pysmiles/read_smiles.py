@@ -103,9 +103,12 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         The SMILES string to parse. Should conform to the OpenSMILES
         specification.
     explicit_hydrogen : bool
-        Whether hydrogens should be explicit nodes in the outout graph, or be
+        Whether hydrogens should be explicit nodes in the output graph, or be
         implicit in 'hcount' attributes.
-    reinterprit_aromatic : bool
+    zero_order_bonds : bool
+        Whether zero-order bonds (".") should be added as edges with an order of
+        0.
+    reinterpret_aromatic : bool
         Whether aromaticity should be determined from the created molecule,
         instead of taken from the SMILES string.
 
