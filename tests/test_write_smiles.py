@@ -130,6 +130,16 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, 3, {'order': 1})],
         False
     ),
+    (
+      [(0, {'element': 'Se', 'charge': 0, 'aromatic': False, 'hcount': 0})],
+      [],
+      False
+    ),
+    (
+      [(0, {'element': 'As', 'charge': 0, 'aromatic': False, 'hcount': 0})],
+      [],
+      False
+    ),
 ))
 def test_write_smiles(node_data, edge_data, expl_h):
     mol = make_mol(node_data, edge_data)
