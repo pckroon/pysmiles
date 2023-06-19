@@ -212,7 +212,12 @@ def write_smiles(molecule, default_element='*', start=None):
         The SMILES string describing `molecule`.
     """
     smiles = []
-    for nodes in nx.connected_components(molecule):
+    components = list(nx.connected_components(molecule))
+    try:
+        components = sorted(components, key=lambda c: sorted(c))
+    except TypeError:
+        pass
+    for nodes in components:
         if start is not None and start in nodes:
             start_ = start
         else:
