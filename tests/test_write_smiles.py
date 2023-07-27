@@ -142,6 +142,16 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         [],
         dict(explicit_hydrogen=False, zero_order_bonds=False, reinterpret_aromatic=True),
     ),
+    (
+      [(0, {'element': 'Se', 'charge': 0, 'aromatic': False, 'hcount': 0})],
+      [],
+      False
+    ),
+    (
+      [(0, {'element': 'As', 'charge': 0, 'aromatic': False, 'hcount': 0})],
+      [],
+      False
+    ),
 ))
 def test_write_smiles(node_data, edge_data, kwargs):
     mol = make_mol(node_data, edge_data)
