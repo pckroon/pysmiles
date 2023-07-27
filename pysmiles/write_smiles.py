@@ -18,11 +18,13 @@ Exposes functionality for writing SMILES strings
 """
 
 from collections import defaultdict
+import logging
 
 import networkx as nx
 
 from .smiles_helper import remove_explicit_hydrogens, format_atom
 
+LOGGER = logging.getLogger(__name__)
 
 def _get_ring_marker(used_markers):
     """
@@ -74,10 +76,10 @@ def _write_edge_symbol(molecule, n_idx, n_jdx):
     return cross_aromatic or not (aromatic_bond or single_bond)
 
 
-def write_smiles(molecule, default_element='*', start=None):
+def write_smiles_component(molecule, default_element='*', start=None):
     """
     Creates a SMILES string describing `molecule` according to the OpenSMILES
-    standard.
+    standard. `molecule` should be a single connected component.
 
     Parameters
     ----------
@@ -187,3 +189,43 @@ def write_smiles(molecule, default_element='*', start=None):
 
     smiles += ')' * branch_depth
     return smiles
+
+def write_smiles(molecule, default_element='*', start=None):
+    """
+    Creates a SMILES string describing `molecule` according to the OpenSMILES
+    standard. If `molecule` consists of multiple disconnected components their
+    corresponding SMILES string will be joined by zero-order bonds (".").
+
+    Parameters
+    ----------
+    molecule : nx.Graph
+        The molecule for which a SMILES string should be generated.
+    default_element : str
+        The element to write if the attribute is missing for a node.
+    start : Hashable
+        The atom at which the depth first traversal of the molecule should
+        start. A sensible one is chosen: preferably a terminal heteroatom.
+
+    Returns
+    -------
+    str
+        The SMILES string describing `molecule`.
+    """
+    smiles = []
+    components = list(nx.connected_components(molecule))
+    try:
+        components = sorted(components, key=lambda c: sorted(c))
+    except TypeError:
+        pass
+    for nodes in components:
+        if start is not None and start in nodes:
+            start_ = start
+        else:
+            start_ = None
+        smiles.append(write_smiles_component(molecule.subgraph(nodes),
+                      default_element=default_element, start=start_))
+    if len(smiles) > 1:
+        LOGGER.info('Be aware the specified molecule is disconnected and '
+                    'consists of %d connected components.', len(smiles))
+    return '.'.join(smiles)
+
