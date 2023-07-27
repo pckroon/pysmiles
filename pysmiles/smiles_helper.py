@@ -141,8 +141,8 @@ def format_atom(molecule, node_key, default_element='*'):
     if aromatic:
         name = name.lower()
 
-    if (stereo is None and isotope == '' and charge == 0 and default_h and
-            class_ == '' and name.lower() in 'b c n o p s *'.split()):
+    if (stereo is None and isotope == '' and charge == 0 and default_h and class_ == '' and
+            (name.lower() in 'b c n o p s *'.split() or name in 'F Cl Br I'.split())):
         return name
 
     if hcount:
