@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-       py_version: ["3.9"]
+       py_version: ["3.11"]
 
     steps:
     - uses: actions/checkout@v3
@@ -46,7 +46,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.11
 
     - name: Install pypa/build
       run: >-
