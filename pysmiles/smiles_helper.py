@@ -436,8 +436,17 @@ def _hydrogen_neighbours(mol, n_idx):
             h_neighbours += 1
     return h_neighbours
 
+def _prune_nodes(nodes, mol):
+    new_nodes = []
+    for node in nodes:
+        if mol.nodes[node].get('element', '*') == '*':
+            new_nodes.append(node)
+        missing = bonds_missing(mol, node, use_order=True)
+        if missing > 0:
+            new_nodes.append(node)
+    return mol.subgraph(new_nodes)
 
-def mark_aromatic_atoms(mol, atoms=None):
+def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
     """
     Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
     the 'hcount' on atoms is correct.
@@ -456,45 +465,49 @@ def mark_aromatic_atoms(mol, atoms=None):
     """
     if atoms is None:
         atoms = set(mol.nodes)
-    aromatic = set()
-    # Only cycles can be aromatic
-    for cycle in nx.cycle_basis(mol):
-        # All atoms should be sp2, so each contributes an electron. We make
-        # sure they are later.
-        electrons = len(cycle)
-        maybe_aromatic = True
+    print('go here')
+    # we start by pre-filling the valance according
+    # to existing bonds for all non-aromatic nodes
+    if prefill_valence:
+        for n_idx in mol:
+            node = mol.nodes[n_idx]
+            if not node.get('aromatic', False):
+                missing = max(bonds_missing(mol, n_idx), 0)
+                charge = node['charge']
+                node['hcount'] = node.get('hcount', 0) + missing + charge
+    # now we erease all previous notion of aromaticity
+    nx.set_node_attributes(mol, False, 'aromatic')
+    # then we find all delocalized subgraphs
+    # by pruning all nodes that have a defined
+    # valance
+    ds_graph = nx.Graph()
+    ds_graph = _prune_nodes(mol.nodes, mol)
+    print('nodes', ds_graph.nodes)
+    for sub_ds in nx.connected_components(ds_graph):
+        # next we prune atoms that cannot be aromatic but sometimes are
+        # considered aromatic
+        #sub_ds_graph = _prune_nodes(sub_ds, mol)
+        print(sub_ds)
+        sub_ds_graph = mol.subgraph(sub_ds)
+        max_match = nx.max_weight_matching(sub_ds_graph)
+        #print(sub_ds_graph.nodes)
+        #print(max_match)
+        # this is a completely invalid smiles
+        print("--")
+        print(sub_ds_graph.edges)
+        print(max_match)
+        if not nx.is_perfect_matching(sub_ds_graph, max_match):
+            raise SyntaxError
 
-        for node_idx in cycle:
-            node = mol.nodes[node_idx]
-            element = node.get('element', '*').capitalize()
-            hcount = node.get('hcount', 0)
-            degree = mol.degree(node_idx) + hcount
-            hcount += _hydrogen_neighbours(mol, node_idx)
-            # Make sure they are possibly aromatic, and are sp2 hybridized
-            if element not in AROMATIC_ATOMS or degree not in (2, 3):
-                maybe_aromatic = False
-                break
-            # Some of the special cases per group. N and O type atoms can
-            # donate an additional electron from a lone pair.
-            # missing cases:
-            #   extracyclic sp2 heteroatom (e.g. =O)
-            #   some charged cases
-            if element in 'N P As'.split() and hcount == 1:
-                electrons += 1
-            elif element in 'O S Se'.split():
-                electrons += 1
-            if node.get('charge', 0) == +1 and not (element == 'C' and hcount == 0):
-                electrons -= 1
-        if maybe_aromatic and int(electrons) % 2 == 0:
-            # definitely (anti) aromatic
-            aromatic.update(cycle)
-    for node_idx in atoms:
-        node = mol.nodes[node_idx]
-        if node_idx not in aromatic:
-            node['aromatic'] = False
+        # we consider it aromatic in this case
+        # if it is a cycle
+        if nx.cycle_basis(sub_ds_graph):
+            nx.set_node_attributes(mol, {node: True for node in sub_ds_graph.nodes}, 'aromatic')
         else:
-            node['aromatic'] = True
-
+            nx.set_node_attributes(mol, {node: False for node in sub_ds_graph.nodes}, 'aromatic')
+            for edge in max_match:
+                print(edge)
+                mol.edges[edge]['order'] = 2
 
 def mark_aromatic_edges(mol):
     """
@@ -511,17 +524,11 @@ def mark_aromatic_edges(mol):
     None
         `mol` is modified in-place.
     """
-    for cycle in nx.cycle_basis(mol):
-        for idx, jdx in mol.edges(nbunch=cycle):
-            if idx not in cycle or jdx not in cycle:
-                continue
-            if (mol.nodes[idx].get('aromatic', False)
-                    and mol.nodes[jdx].get('aromatic', False)):
-                mol.edges[idx, jdx]['order'] = 1.5
-    for idx, jdx in mol.edges:
-        if 'order' not in mol.edges[idx, jdx]:
-            mol.edges[idx, jdx]['order'] = 1
-
+    for edge in mol.edges:
+        if all(mol.nodes[node].get('aromatic', 'False') for node in edge):
+            mol.edges[edge]['order'] = 1.5
+        elif not mol.edges[edge].get('order', False):
+            mol.edges[edge]['order'] = 1
 
 def correct_aromatic_rings(mol):
     """
