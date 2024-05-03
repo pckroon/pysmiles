@@ -439,17 +439,20 @@ def _hydrogen_neighbours(mol, n_idx):
 def _prune_nodes(nodes, mol):
     new_nodes = []
     for node in nodes:
-        if mol.nodes[node].get('element', '*') == '*':
-            new_nodes.append(node)
-        missing = bonds_missing(mol, node, use_order=True)
+        # no point in trying to guess hybridization for
+        # things of unkown valance; i.e. remove them
+        if mol.nodes[node].get('element', '*') not in VALENCES:
+            continue
+        # the charge addition is neccessary because non of the
+        # functions seem to deal with absolute charges so far
+        missing = bonds_missing(mol, node, use_order=True) + mol.nodes[node]['charge']
         if missing > 0:
             new_nodes.append(node)
     return mol.subgraph(new_nodes)
 
 def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
     """
-    Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
-    the 'hcount' on atoms is correct.
+    Properly kekeulizes molecules and sets the aromatic attribute.
 
     Parameters
     ----------
@@ -465,14 +468,14 @@ def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
     """
     if atoms is None:
         atoms = set(mol.nodes)
-    print('go here')
     # we start by pre-filling the valance according
     # to existing bonds for all non-aromatic nodes
     if prefill_valence:
         for n_idx in mol:
             node = mol.nodes[n_idx]
-            if not node.get('aromatic', False):
+            if not node.get('aromatic', False) and node.get('element', '*') in VALENCES:
                 missing = max(bonds_missing(mol, n_idx), 0)
+                print(missing)
                 charge = node['charge']
                 node['hcount'] = node.get('hcount', 0) + missing + charge
     # now we erease all previous notion of aromaticity
@@ -482,20 +485,12 @@ def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
     # valance
     ds_graph = nx.Graph()
     ds_graph = _prune_nodes(mol.nodes, mol)
-    print('nodes', ds_graph.nodes)
     for sub_ds in nx.connected_components(ds_graph):
         # next we prune atoms that cannot be aromatic but sometimes are
         # considered aromatic
-        #sub_ds_graph = _prune_nodes(sub_ds, mol)
-        print(sub_ds)
         sub_ds_graph = mol.subgraph(sub_ds)
         max_match = nx.max_weight_matching(sub_ds_graph)
-        #print(sub_ds_graph.nodes)
-        #print(max_match)
         # this is a completely invalid smiles
-        print("--")
-        print(sub_ds_graph.edges)
-        print(max_match)
         if not nx.is_perfect_matching(sub_ds_graph, max_match):
             raise SyntaxError
 
@@ -506,7 +501,6 @@ def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
         else:
             nx.set_node_attributes(mol, {node: False for node in sub_ds_graph.nodes}, 'aromatic')
             for edge in max_match:
-                print(edge)
                 mol.edges[edge]['order'] = 2
 
 def mark_aromatic_edges(mol):
