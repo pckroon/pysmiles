@@ -439,18 +439,16 @@ def _hydrogen_neighbours(mol, n_idx):
 def _prune_nodes(nodes, mol):
     new_nodes = []
     for node in nodes:
-        # no point in trying to guess hybridization for
-        # things of unkown valance; i.e. remove them
-        if mol.nodes[node].get('element', '*') not in VALENCES:
+        # all wild card nodes are ellegible
+        if mol.nodes[node].get('element', '*') == '*':
+            new_nodes.append(node)
             continue
-        # the charge addition is neccessary because non of the
-        # functions seem to deal with absolute charges so far
-        missing = bonds_missing(mol, node, use_order=True) + mol.nodes[node]['charge']
+        missing = bonds_missing(mol, node, use_order=True) + mol.nodes[node].get('charge', 0)
         if missing > 0:
             new_nodes.append(node)
     return mol.subgraph(new_nodes)
 
-def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
+def mark_aromatic_atoms(mol, atoms=None, correct_aromatic=False):
     """
     Properly kekeulizes molecules and sets the aromatic attribute.
 
@@ -460,6 +458,10 @@ def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
         The molecule.
     atoms: collections.abc.Iterable
         The atoms to act on. Will still analyse the full molecule.
+    correct_aromatic: bool
+        If the falg is set then all nodes are considered
+        in the kekulization process otherwise only aromatic
+        nodes are considered.
 
     Returns
     -------
@@ -468,34 +470,46 @@ def mark_aromatic_atoms(mol, atoms=None, prefill_valence=False):
     """
     if atoms is None:
         atoms = set(mol.nodes)
-    # we start by pre-filling the valance according
-    # to existing bonds for all non-aromatic nodes
-    if prefill_valence:
-        for n_idx in mol:
-            node = mol.nodes[n_idx]
-            if not node.get('aromatic', False) and node.get('element', '*') in VALENCES:
-                missing = max(bonds_missing(mol, n_idx), 0)
-                print(missing)
-                charge = node['charge']
-                node['hcount'] = node.get('hcount', 0) + missing + charge
-    # now we erease all previous notion of aromaticity
-    nx.set_node_attributes(mol, False, 'aromatic')
-    # then we find all delocalized subgraphs
-    # by pruning all nodes that have a defined
-    # valance
     ds_graph = nx.Graph()
-    ds_graph = _prune_nodes(mol.nodes, mol)
-    for sub_ds in nx.connected_components(ds_graph):
-        # next we prune atoms that cannot be aromatic but sometimes are
-        # considered aromatic
-        sub_ds_graph = mol.subgraph(sub_ds)
-        max_match = nx.max_weight_matching(sub_ds_graph)
-        # this is a completely invalid smiles
-        if not nx.is_perfect_matching(sub_ds_graph, max_match):
-            raise SyntaxError
+    # in the correct aromatic mode we consider
+    # the hcount of all nodes to be correct and
+    # prune all nodes that have full valance
+    # bond orders are ignored
+    if correct_aromatic:
+        nodes = mol.nodes
+    # otherwise we only consider aromatic nodes;
+    # all other nodes regardless of their valency
+    # are pruned
+    else:
+        nodes = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
 
-        # we consider it aromatic in this case
-        # if it is a cycle
+    # prune all nodes from molecule that are elegible and have
+    # full valency
+    ds_graph = _prune_nodes(nodes, mol)
+
+    # set the aromatic attribute to False for all nodes
+    # as a precaution
+    nx.set_node_attributes(mol, False, 'aromatic')
+
+    for sub_ds in nx.connected_components(ds_graph):
+        sub_ds_graph = mol.subgraph(sub_ds)
+        print(sub_ds_graph.nodes)
+        max_match = nx.max_weight_matching(sub_ds_graph)
+        # if the subgraph is three nodes it might be
+        # a triangle, which is the only special case
+        # where there is no maximum match but
+        is_triangle = (len(sub_ds_graph.nodes) == 3 and nx.cycle_basis(sub_ds_graph))
+        if not is_triangle:
+            max_match = nx.max_weight_matching(sub_ds_graph)
+            # we check if a maximum matching exists and
+            # if it is perfect. if it is not perfect,
+            # this graph originates from a completely invalid
+            # smiles and we raise an error
+            if not nx.is_perfect_matching(sub_ds_graph, max_match):
+                msg = "Your molecule is invalid and cannot be kekulized."
+                raise SyntaxError(msg)
+
+        # we consider it aromatic in this case if it is a cycle
         if nx.cycle_basis(sub_ds_graph):
             nx.set_node_attributes(mol, {node: True for node in sub_ds_graph.nodes}, 'aromatic')
         else:
@@ -540,7 +554,7 @@ def correct_aromatic_rings(mol):
         `mol` is modified in-place.
     """
     fill_valence(mol)
-    mark_aromatic_atoms(mol)
+    mark_aromatic_atoms(mol, correct_aromatic=True)
     mark_aromatic_edges(mol)
 
 

@@ -556,3 +556,15 @@ def test_stereo_logging(caplog, smiles, n_records):
     assert len(caplog.records) == n_records
     for record in caplog.records:
         assert record.levelname == "WARNING"
+
+
+@pytest.mark.parametrize('smiles', (
+    'c1c[nH]cc1',
+    'c1cNcc1',
+    'c1cScc1',
+    'c1cnc[nH]1',
+    'c1cncN1',
+    'c1cscc1'))
+def test_kekulize(smiles):
+    g = read_smiles(smiles)
+    assert len(g) > 0
