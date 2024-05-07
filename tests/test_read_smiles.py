@@ -344,7 +344,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     (
         '[2H][CH2]',
         [(0, {'charge': 0, 'element': 'H', 'hcount': 0, 'isotope': 2, 'aromatic': False}),
-         (1, {'charge': 0, 'element': 'C', 'hcount': 3, 'aromatic': False})],
+         (1, {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False})],
         [(0, 1, {'order': 1})],
         False
     ),
