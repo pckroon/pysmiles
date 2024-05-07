@@ -439,7 +439,7 @@ def _hydrogen_neighbours(mol, n_idx):
 def _prune_nodes(nodes, mol):
     new_nodes = []
     for node in nodes:
-        # all wild card nodes are ellegible
+        # all wild card nodes are eligible
         if mol.nodes[node].get('element', '*') == '*':
             new_nodes.append(node)
             continue
@@ -457,11 +457,7 @@ def mark_aromatic_atoms(mol, atoms=None):
     mol : nx.Graph
         The molecule.
     atoms: collections.abc.Iterable
-        The atoms to act on. Will still analyse the full molecule.
-    correct_aromatic: bool
-        If the falg is set then all nodes are considered
-        in the kekulization process otherwise only aromatic
-        nodes are considered.
+        The atoms to act on; all other nodes are pruned
 
     Returns
     -------
@@ -470,7 +466,7 @@ def mark_aromatic_atoms(mol, atoms=None):
     """
     if atoms is None:
         atoms = set(mol.nodes)
-    # prune all nodes from molecule that are elegible and have
+    # prune all nodes from molecule that are eligible and have
     # full valency
     ds_graph = _prune_nodes(atoms, mol)
 
