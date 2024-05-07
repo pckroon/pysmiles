@@ -448,7 +448,7 @@ def _prune_nodes(nodes, mol):
             new_nodes.append(node)
     return mol.subgraph(new_nodes)
 
-def mark_aromatic_atoms(mol, atoms=None, correct_aromatic=False):
+def mark_aromatic_atoms(mol, atoms=None):
     """
     Properly kekeulizes molecules and sets the aromatic attribute.
 
@@ -470,22 +470,9 @@ def mark_aromatic_atoms(mol, atoms=None, correct_aromatic=False):
     """
     if atoms is None:
         atoms = set(mol.nodes)
-    ds_graph = nx.Graph()
-    # in the correct aromatic mode we consider
-    # the hcount of all nodes to be correct and
-    # prune all nodes that have full valance
-    # bond orders are ignored
-    if correct_aromatic:
-        nodes = mol.nodes
-    # otherwise we only consider aromatic nodes;
-    # all other nodes regardless of their valency
-    # are pruned
-    else:
-        nodes = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
-
     # prune all nodes from molecule that are elegible and have
     # full valency
-    ds_graph = _prune_nodes(nodes, mol)
+    ds_graph = _prune_nodes(atoms, mol)
 
     # set the aromatic attribute to False for all nodes
     # as a precaution
@@ -493,7 +480,6 @@ def mark_aromatic_atoms(mol, atoms=None, correct_aromatic=False):
 
     for sub_ds in nx.connected_components(ds_graph):
         sub_ds_graph = mol.subgraph(sub_ds)
-        print(sub_ds_graph.nodes)
         max_match = nx.max_weight_matching(sub_ds_graph)
         # if the subgraph is three nodes it might be
         # a triangle, which is the only special case
@@ -554,7 +540,7 @@ def correct_aromatic_rings(mol):
         `mol` is modified in-place.
     """
     fill_valence(mol)
-    mark_aromatic_atoms(mol, correct_aromatic=True)
+    mark_aromatic_atoms(mol, atoms=mol.nodes)
     mark_aromatic_edges(mol)
 
 

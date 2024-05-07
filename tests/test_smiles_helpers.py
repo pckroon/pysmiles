@@ -172,7 +172,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     # 11
     (
-        mark_aromatic_atoms, {'correct_aromatic': True},
+        mark_aromatic_atoms, {},
         [(0, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (1, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (2, {'element': 'C', 'hcount': 1, 'charge': 0}),
@@ -236,7 +236,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
 #   ),
     # 13
     (
-        mark_aromatic_atoms, {'correct_aromatic': True},
+        mark_aromatic_atoms, {},
         [(0, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (1, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (2, {'element': 'C', 'hcount': 1, 'charge': 0}),

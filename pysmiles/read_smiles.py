@@ -185,7 +185,8 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
     if reinterpret_aromatic:
-        mark_aromatic_atoms(mol)
+        arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
+        mark_aromatic_atoms(mol, arom_atoms)
         mark_aromatic_edges(mol)
         for idx, jdx in mol.edges:
             if ((not mol.nodes[idx].get('aromatic', False) or
