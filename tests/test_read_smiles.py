@@ -564,7 +564,17 @@ def test_stereo_logging(caplog, smiles, n_records):
     'c1cScc1',
     'c1cnc[nH]1',
     'c1cncN1',
-    'c1cscc1'))
+    'c1cscc1',))
 def test_kekulize(smiles):
     g = read_smiles(smiles)
     assert len(g) > 0
+
+
+@pytest.mark.parametrize('smiles', (
+    'cc',
+    'cn',))
+def test_skip_kekulize(smiles):
+    g = read_smiles(smiles, reinterpret_aromatic=False)
+    for node in g.nodes:
+        assert g.nodes[node]['aromatic']
+    assert g.edges[(0, 1)]['order'] == 1.5
