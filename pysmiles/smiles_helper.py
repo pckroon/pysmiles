@@ -477,19 +477,13 @@ def mark_aromatic_atoms(mol, atoms=None):
     for sub_ds in nx.connected_components(ds_graph):
         sub_ds_graph = mol.subgraph(sub_ds)
         max_match = nx.max_weight_matching(sub_ds_graph)
-        # if the subgraph is three nodes it might be
-        # a triangle, which is the only special case
-        # where there is no maximum match but
-        is_triangle = (len(sub_ds_graph.nodes) == 3 and nx.cycle_basis(sub_ds_graph))
-        if not is_triangle:
-            max_match = nx.max_weight_matching(sub_ds_graph)
-            # we check if a maximum matching exists and
-            # if it is perfect. if it is not perfect,
-            # this graph originates from a completely invalid
-            # smiles and we raise an error
-            if not nx.is_perfect_matching(sub_ds_graph, max_match):
-                msg = "Your molecule is invalid and cannot be kekulized."
-                raise SyntaxError(msg)
+        # we check if a maximum matching exists and
+        # if it is perfect. if it is not perfect,
+        # this graph originates from a completely invalid
+        # smiles and we raise an error
+        if not nx.is_perfect_matching(sub_ds_graph, max_match):
+            msg = "Your molecule is invalid and cannot be kekulized."
+            raise SyntaxError(msg)
 
         # we consider a node aromatic if it can take part in DIME
         # to do so all nodes in a delocalized subgraph have to be
