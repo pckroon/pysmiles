@@ -491,9 +491,16 @@ def mark_aromatic_atoms(mol, atoms=None):
                 msg = "Your molecule is invalid and cannot be kekulized."
                 raise SyntaxError(msg)
 
-        # we consider it aromatic in this case if it is a cycle
-        if nx.cycle_basis(sub_ds_graph):
-            nx.set_node_attributes(mol, {node: True for node in sub_ds_graph.nodes}, 'aromatic')
+        # we consider a node aromatic if it can take part in DIME
+        # to do so all nodes in a delocalized subgraph have to be
+        # part of a cycle system
+        cycles = nx.cycle_basis(sub_ds_graph)
+        nodes_in_cycles = []
+        for cycle in cycles:
+            nodes_in_cycles += cycle
+
+        if set(nodes_in_cycles) == set(mol.nodes):
+                nx.set_node_attributes(mol, {node: True for node in sub_ds_graph.nodes}, 'aromatic')
         else:
             nx.set_node_attributes(mol, {node: False for node in sub_ds_graph.nodes}, 'aromatic')
             for edge in max_match:
