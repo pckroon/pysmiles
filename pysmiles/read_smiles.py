@@ -188,11 +188,6 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
         mark_aromatic_atoms(mol, arom_atoms)
         mark_aromatic_edges(mol)
-        for idx, jdx in mol.edges:
-            if ((not mol.nodes[idx].get('aromatic', False) or
-                    not mol.nodes[jdx].get('aromatic', False))
-                    and mol.edges[idx, jdx].get('order', 1) == 1.5):
-                mol.edges[idx, jdx]['order'] = 1
     else:
         mark_aromatic_edges(mol)
 
