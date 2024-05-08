@@ -517,7 +517,7 @@ def mark_aromatic_edges(mol):
     for edge in mol.edges:
         if all(mol.nodes[node].get('aromatic', 'False') for node in edge):
             mol.edges[edge]['order'] = 1.5
-        elif not mol.edges[edge].get('order', False):
+        elif 'order' not in mol.edges[edge]:
             mol.edges[edge]['order'] = 1
 
 def correct_aromatic_rings(mol):
