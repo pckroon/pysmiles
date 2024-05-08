@@ -599,7 +599,7 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('c1c1CC', ValueError),
     ('CC11C', ValueError),
     ('1CCC1', ValueError),
-#    ('cccccc', ValueError),
+    ('ccc', SyntaxError),
     ('C=1CC-1', ValueError),
 ))
 def test_invalid_smiles(smiles, error_type):
