@@ -499,7 +499,7 @@ def mark_aromatic_atoms(mol, atoms=None):
         for cycle in cycles:
             nodes_in_cycles += cycle
 
-        if set(nodes_in_cycles) == set(mol.nodes):
+        if set(nodes_in_cycles) == set(sub_ds_graph.nodes):
                 nx.set_node_attributes(mol, {node: True for node in sub_ds_graph.nodes}, 'aromatic')
         else:
             nx.set_node_attributes(mol, {node: False for node in sub_ds_graph.nodes}, 'aromatic')
