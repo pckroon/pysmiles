@@ -498,12 +498,14 @@ def mark_aromatic_atoms(mol, atoms=None):
         nodes_in_cycles = []
         for cycle in cycles:
             nodes_in_cycles += cycle
+            nx.set_node_attributes(mol, {node: True for node in cycle}, 'aromatic')
 
-        if set(nodes_in_cycles) == set(sub_ds_graph.nodes):
-                nx.set_node_attributes(mol, {node: True for node in sub_ds_graph.nodes}, 'aromatic')
-        else:
-            nx.set_node_attributes(mol, {node: False for node in sub_ds_graph.nodes}, 'aromatic')
-            for edge in max_match:
+        for node in sub_ds_graph.nodes:
+            if node not in nodes_in_cycles:
+                mol.nodes[node]['aromatic'] = False
+
+        for edge in max_match:
+            if not edge[0] in nodes_in_cycles and not edge[1] in nodes_in_cycles:
                 mol.edges[edge]['order'] = 2
 
 def mark_aromatic_edges(mol):
