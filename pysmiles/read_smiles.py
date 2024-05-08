@@ -184,30 +184,14 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     if ring_nums:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
-    # Time to deal with aromaticity. This is a mess, because it's not super
-    # clear what aromaticity information has been provided, and what should be
-    # inferred. In addition, to what extend do we want to provide a "sane"
-    # molecule, even if this overrides what the SMILES string specifies?
-    cycles = nx.cycle_basis(mol)
-    ring_idxs = set()
-    for cycle in cycles:
-        ring_idxs.update(cycle)
-    non_ring_idxs = set(mol.nodes) - ring_idxs
-    for n_idx in non_ring_idxs:
-        if mol.nodes[n_idx].get('aromatic', False):
-            raise ValueError("You specified an aromatic atom outside of a"
-                             " ring. This is impossible")
-    
-    mark_aromatic_edges(mol)
-    fill_valence(mol)
     if reinterpret_aromatic:
-        mark_aromatic_atoms(mol)
+        arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
+        mark_aromatic_atoms(mol, arom_atoms)
         mark_aromatic_edges(mol)
-        for idx, jdx in mol.edges:
-            if ((not mol.nodes[idx].get('aromatic', False) or
-                    not mol.nodes[jdx].get('aromatic', False))
-                    and mol.edges[idx, jdx].get('order', 1) == 1.5):
-                mol.edges[idx, jdx]['order'] = 1
+    else:
+        mark_aromatic_edges(mol)
+
+    fill_valence(mol)
 
     if explicit_hydrogen:
         add_explicit_hydrogens(mol)
