@@ -483,13 +483,18 @@ def _prune_nodes(nodes, mol):
 
 def mark_aromatic_atoms(mol, strict=True):
     """
-    Properly kekulizes molecules and sets the aromatic attribute.
+    Aromaticity is defined here as regions that show delocalization induced
+    molecular equivalence (DIME). In other words, regions where alternating
+    single and double bonds can interchange without inducing any charges.
+    This function will correctly identify and mark aromatic atoms within
+    ``mol``, as well as kekulize regions that are marked as aromatic, but do not
+    show DIME.
 
     Parameters
     ----------
     mol : nx.Graph
         The molecule.
-    strict: bool
+    strict : bool
         Whether to raise a SyntaxError if the aromatic region of the molecule
         cannot be kekulized.
 
