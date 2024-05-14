@@ -73,7 +73,7 @@ def assertEqualGraphs(graph1, graph2):  # pylint: disable=invalid-name
         edge1 = graph1.edges[idx1, jdx1]
         edge2 = graph2.edges[idx2, jdx2]
         if edge1 != edge2:
-            fmt = 'Edge between {} and {} is not equal: {} is not {}'
-            raise AssertionError(fmt.format(graph1.nodes[idx1],
+            fmt = 'Edge ({}, {}) between {} and {} is not equal: {} is not {}'
+            raise AssertionError(fmt.format(idx1, jdx1, graph1.nodes[idx1],
                                             graph1.nodes[jdx1],
                                             edge1, edge2))
