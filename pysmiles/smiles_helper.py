@@ -560,6 +560,70 @@ def mark_aromatic_atoms(mol, strict=True):
         if not all(mol.nodes[v].get('aromatic', False) for v in edge):
             mol.edges[edge]['order'] = 2
 
+
+def kekulize(mol):
+    """
+    Assigns alternating single and double bonds to all aromatic regions in
+    ``mol``.
+
+    Arguments
+    ---------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        ``mol`` is modified in place.
+
+    Raises
+    ------
+    ValueError
+        If no alternating single and double bonds can be assigned to the
+        aromatic region of ``mol``.
+    """
+    arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic')}
+    aromatic_mol = mol.subgraph(arom_nodes)
+    matching = nx.max_weight_matching(aromatic_mol)
+    if not nx.is_perfect_matching(aromatic_mol, matching):
+        raise ValueError('Aromatic region cannot be kekulized.')
+    for edge in aromatic_mol.edges:
+        if edge in matching or edge[::-1] in matching:
+            mol.edges[edge]['order'] = 2
+        else:
+            mol.edges[edge]['order'] = 1
+        mol.nodes[edge[0]]['aromatic'] = False
+        mol.nodes[edge[1]]['aromatic'] = False
+
+
+def dekekulize(mol):
+    """
+    Finds all cycles in ``mol`` that consist of alternating single and double
+    bonds, and marks them as aromatic.
+
+    Arguments
+    ---------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        ``mol`` is modified in place.
+    """
+    double_bonds = {e for e in mol.edges if mol.edges[e].get('order', 1) == 2}
+    cycles = nx.simple_cycles(mol)
+
+    for cycle in cycles:
+        is_perfect = nx.is_perfect_matching(mol.subgraph(cycle),
+                                            {e for e in double_bonds if
+                                             all(v in cycle for v in e)})
+        if is_perfect:
+            for node in cycle:
+                mol.nodes[node]['aromatic'] = True
+    mark_aromatic_edges(mol)
+
+
 def mark_aromatic_edges(mol):
     """
     Set all bonds between aromatic atoms (attribute 'aromatic' is `True`) to
