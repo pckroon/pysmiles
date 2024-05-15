@@ -649,7 +649,7 @@ def mark_aromatic_edges(mol):
             mol.edges[edge]['order'] = 1
 
 
-def correct_aromatic_rings(mol):
+def correct_aromatic_rings(mol, strict=True):
     """
     Sets hcount for all atoms, marks aromaticity for all atoms, and the order of
     all aromatic bonds to 1.5.
@@ -666,7 +666,7 @@ def correct_aromatic_rings(mol):
     """
     nx.set_node_attributes(mol, True, 'aromatic')
     fill_valence(mol)
-    mark_aromatic_atoms(mol)
+    mark_aromatic_atoms(mol, strict=strict)
     mark_aromatic_edges(mol)
 
 
