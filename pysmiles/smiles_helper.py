@@ -658,6 +658,8 @@ def correct_aromatic_rings(mol, strict=True):
     ----------
     mol : nx.Graph
         The molecule.
+    strict : bool
+        Passed to ``mark_aromatic_atoms``.
 
     Returns
     -------
