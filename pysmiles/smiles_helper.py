@@ -143,7 +143,7 @@ def format_atom(molecule, node_key, default_element='*'):
     if stereo is not None:  # pragma: nocover
         raise NotImplementedError
 
-    if aromatic:
+    if aromatic and name in AROMATIC_ATOMS:
         name = name.lower()
 
     if (stereo is None and isotope == '' and charge == 0 and default_h and class_ == '' and
@@ -511,6 +511,7 @@ def mark_aromatic_atoms(mol, strict=True):
     """
     # prune all nodes from molecule that are eligible and have
     # full valency
+    # ALTERNATIVE: Select all nodes with element in AROMATIC_ATOMS?
     arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
     ds_graph = _prune_nodes(arom_atoms, mol)
 
@@ -582,7 +583,7 @@ def kekulize(mol):
         If no alternating single and double bonds can be assigned to the
         aromatic region of ``mol``.
     """
-    arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic')}
+    arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic') and mol.nodes[n].get('element') in AROMATIC_ATOMS}
     aromatic_mol = mol.subgraph(arom_nodes)
     matching = nx.max_weight_matching(aromatic_mol)
     if not nx.is_perfect_matching(aromatic_mol, matching):
@@ -615,6 +616,8 @@ def dekekulize(mol):
     cycles = nx.simple_cycles(mol)
 
     for cycle in cycles:
+        if not all(mol.nodes[n].get('element') in AROMATIC_ATOMS for n in cycle):
+            continue
         is_perfect = nx.is_perfect_matching(mol.subgraph(cycle),
                                             {e for e in double_bonds if
                                              all(v in cycle for v in e)})
