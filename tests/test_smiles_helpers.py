@@ -446,7 +446,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (3, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (4, {'element': 'N', 'hcount': 0, 'aromatic': False}),
-         (5, {'element': 'H', 'hcount': 0, 'aromatic': False})],
+         (5, {'element': 'H', 'aromatic': False})],
         [(0, 1, {'order': 2}),
          (1, 2, {'order': 1}),
          (2, 3, {'order': 2}),

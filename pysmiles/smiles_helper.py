@@ -46,7 +46,7 @@ ORBITAL_SIZES = [[2],  # 1s
                  [2,  10, 6],  # 5s, 4d, 5p
                  [2,  14, 10, 6],]  # 6s, 4f, 5d, 6p
 
-ELECTRON_COUNTS = {"H": 1, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15,
+ELECTRON_COUNTS = {"B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15,
                    "S": 16, "Cl": 17, "As": 33, "Se": 34, "Br": 35, "I": 53}
 
 
@@ -322,7 +322,7 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
         increment_bond_orders(mol, max_bond_order=max_bond_order)
     for n_idx in mol:
         node = mol.nodes[n_idx]
-        if 'hcount' in node and respect_hcount:
+        if ('hcount' in node and respect_hcount) or node.get('element') == 'H':
             continue
         missing = max(bonds_missing(mol, n_idx), 0)
         node['hcount'] = node.get('hcount', 0) + missing
