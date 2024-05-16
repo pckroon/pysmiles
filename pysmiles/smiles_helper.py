@@ -349,51 +349,44 @@ def bonds_missing(mol, node_idx, use_order=True):
     """
     bonds = _bonds(mol, node_idx, use_order)
     bonds += mol.nodes[node_idx].get('hcount', 0)
-    valence = _valence(mol, node_idx, bonds)
-    return int(valence - bonds)
+
+    val = valence(mol.nodes[node_idx])
+    val = [v for v in val if v >= bonds] or [0]
+    return int(max(val[0] - bonds, 0))
 
 
-def _valence(mol, node_idx, minimum=0):
+def valence(atom):
     """
-    Returns the valence of the specified node. Since some elements can have
-    multiple valences, give the smallest one that is more than `minimum`.
+    Returns the valence of the atom. Since some elements can have
+    multiple valences, The valence is returned as list.
 
     Parameters
     ----------
-    mol : nx.Graph
-        The molecule.
-    node_idx : hashable
-        The node to look at. Should be in mol.
-    minimum : int
-        The minimum value of valence.
+    atom: dict
 
     Returns
     -------
-    int
-        The smallest valence of node more than `minimum`.
+    list[int]
+        The valences for the given atom.
     """
-    atom = mol.nodes[node_idx]
-    electrons = ELECTRON_COUNTS[atom.get('element', '*').capitalize()] - atom.get('charge', 0)
+    electrons = ELECTRON_COUNTS.get(atom.get('element', '*').capitalize(), 0) - atom.get('charge', 0)
     # Let's start by filling complete shells:
     for idx, shell in enumerate(ORBITAL_SIZES):
         shell_size = sum(shell)
-        print(atom, electrons, shell_size)
         if shell_size <= electrons:
             electrons -= shell_size
         else:
             break
-    else: # nobreak
-        raise ValueError(f'Too many electrons for sanity for {atom}: {electrons}')
+    else:  # nobreak
+        raise ValueError(f'Too many electrons for sanity for {atom}: {electrons+sum(map(sum, ORBITAL_SIZES))}')
     # Any electrons we have leftover we distribute over the orbitals. First 1
     # electron in each, then we start making pairs. The resulting valence will
     # be the number of unpaired electrons. Added bonus/complication: electrons
     # in pairs we can excite to higher shells, increasing the number of unpaired
     # electrons
-    shell = ORBITAL_SIZES[idx+1]
-    print(shell, electrons)
-
+    shell = ORBITAL_SIZES[idx]
     shell_size = sum(shell)
-    to_assign = min(electrons, shell_size//2)
+    to_assign = min(electrons, shell_size // 2)
     single_electrons = to_assign
     electrons -= to_assign
 
@@ -403,12 +396,10 @@ def _valence(mol, node_idx, minimum=0):
     electrons -= to_assign
     assert electrons == 0
 
-    val = [single_electrons + 2*n for n in range(electron_pairs+1)]
-    print(atom, '>', val)
-    try:
-        val = min(filter(lambda a: a >= minimum, val))
-    except ValueError:  # More bonds than possible
-        val = max(val)
+    if len(ORBITAL_SIZES[idx+1]) >= 3:
+        val = [single_electrons + 2*n for n in range(electron_pairs+1)]
+    else:
+        val = [single_electrons]
 
     return val
 
@@ -459,19 +450,11 @@ def has_default_h_count(mol, node_idx, use_order=True):
     bool
     """
     bonds = _bonds(mol, node_idx, use_order)
-    valence = _valence(mol, node_idx, bonds)
+    val = valence(mol.nodes[node_idx])
+    val = [v for v in val if v >= bonds] or [0]
     hcount = mol.nodes[node_idx].get('hcount', 0)
-    return valence - bonds == hcount
+    return max(val[0] - bonds, 0) == hcount
 
-
-def _hydrogen_neighbours(mol, n_idx):
-    neighbours = mol[n_idx]
-    h_neighbours = 0
-    for n_jdx in neighbours:
-        if (mol.nodes[n_jdx].get('element', '*') == 'H' and
-                mol.edges[n_idx, n_jdx].get('order', 1) == 1):
-            h_neighbours += 1
-    return h_neighbours
 
 def _prune_nodes(nodes, mol):
     new_nodes = []
@@ -484,6 +467,7 @@ def _prune_nodes(nodes, mol):
         if missing > 0:
             new_nodes.append(node)
     return mol.subgraph(new_nodes)
+
 
 def mark_aromatic_atoms(mol, atoms=None):
     """
