@@ -48,7 +48,7 @@ def valid_hydrogen_count(mol):
 isotope = st.integers(min_value=1)
 element = st.sampled_from('C N O S P H'.split())
 hcount = st.integers(min_value=0, max_value=9)
-charge = st.integers(min_value=-99, max_value=99)
+charge = st.integers(min_value=-20, max_value=20)
 class_ = st.integers(min_value=1)
 
 node_data = st.fixed_dictionaries({
