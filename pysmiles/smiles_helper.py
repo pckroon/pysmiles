@@ -37,10 +37,17 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
                           STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
                           CLASS_PATTERN + r'\]$')
 
-VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
-            "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
-
 AROMATIC_ATOMS = "B C N O P S Se As *".split()
+
+ORBITAL_SIZES = [[2],  # 1s
+                 [2,  6],  # 2s, 2p
+                 [2,  6],  # 3s, 3p
+                 [2,  10, 6],  # 4s, 3d, 4p
+                 [2,  10, 6],  # 5s, 4d, 5p
+                 [2,  14, 10, 6],]  # 6s, 4f, 5d, 6p
+
+ELECTRON_COUNTS = {"H": 1, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15,
+                   "S": 16, "Cl": 17, "As": 33, "Se": 34, "Br": 35, "I": 53}
 
 
 def parse_atom(atom):
@@ -365,14 +372,44 @@ def _valence(mol, node_idx, minimum=0):
     int
         The smallest valence of node more than `minimum`.
     """
-    element = mol.nodes[node_idx].get('element', '').capitalize()
-    if element not in VALENCES:
-        return 0
-    val = VALENCES.get(element)
+    atom = mol.nodes[node_idx]
+    electrons = ELECTRON_COUNTS[atom.get('element', '*').capitalize()] - atom.get('charge', 0)
+    # Let's start by filling complete shells:
+    for idx, shell in enumerate(ORBITAL_SIZES):
+        shell_size = sum(shell)
+        print(atom, electrons, shell_size)
+        if shell_size <= electrons:
+            electrons -= shell_size
+        else:
+            break
+    else: # nobreak
+        raise ValueError(f'Too many electrons for sanity for {atom}: {electrons}')
+    # Any electrons we have leftover we distribute over the orbitals. First 1
+    # electron in each, then we start making pairs. The resulting valence will
+    # be the number of unpaired electrons. Added bonus/complication: electrons
+    # in pairs we can excite to higher shells, increasing the number of unpaired
+    # electrons
+    shell = ORBITAL_SIZES[idx+1]
+    print(shell, electrons)
+
+    shell_size = sum(shell)
+    to_assign = min(electrons, shell_size//2)
+    single_electrons = to_assign
+    electrons -= to_assign
+
+    to_assign = min(electrons, shell_size // 2)
+    electron_pairs = to_assign
+    single_electrons -= to_assign
+    electrons -= to_assign
+    assert electrons == 0
+
+    val = [single_electrons + 2*n for n in range(electron_pairs+1)]
+    print(atom, '>', val)
     try:
         val = min(filter(lambda a: a >= minimum, val))
     except ValueError:  # More bonds than possible
         val = max(val)
+
     return val
 
 
@@ -443,7 +480,7 @@ def _prune_nodes(nodes, mol):
         if mol.nodes[node].get('element', '*') == '*':
             new_nodes.append(node)
             continue
-        missing = bonds_missing(mol, node, use_order=True) + mol.nodes[node].get('charge', 0)
+        missing = bonds_missing(mol, node, use_order=True)
         if missing > 0:
             new_nodes.append(node)
     return mol.subgraph(new_nodes)
