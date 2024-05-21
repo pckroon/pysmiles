@@ -395,14 +395,13 @@ def valence(atom):
     shell = ORBITAL_SIZES[idx]
     shell_size = sum(shell)
     single_electrons, paired_electrons = divmod(electrons, shell_size//2)
-    match single_electrons:
-        case 0:
-            single_electrons, paired_electrons, empty_orbitals = paired_electrons, 0, shell_size//2 - paired_electrons
-        case 1:
-            single_electrons = shell_size//2 - paired_electrons
-            single_electrons, paired_electrons, empty_orbitals = single_electrons, paired_electrons, 0
-        case _:  # pragma: nocover
-            raise AssertionError(f"{single_electrons=}")
+    if single_electrons == 0:
+        single_electrons, paired_electrons, empty_orbitals = paired_electrons, 0, shell_size//2 - paired_electrons
+    elif single_electrons == 1:
+        single_electrons = shell_size//2 - paired_electrons
+        single_electrons, paired_electrons, empty_orbitals = single_electrons, paired_electrons, 0
+    else:  # pragma: nocover
+        raise AssertionError(f"{single_electrons=}")
 
     if idx >= 2:
         # Excite any paired electrons to a higher orbital to deal with
