@@ -511,7 +511,6 @@ def mark_aromatic_atoms(mol, strict=True):
     """
     # prune all nodes from molecule that are eligible and have
     # full valency
-    # ALTERNATIVE: Select all nodes with element in AROMATIC_ATOMS?
     arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
     ds_graph = _prune_nodes(arom_atoms, mol)
 
