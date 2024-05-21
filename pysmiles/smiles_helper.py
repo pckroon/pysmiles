@@ -23,6 +23,7 @@ import re
 import operator
 
 import networkx as nx
+from . import PTE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,9 +46,6 @@ ORBITAL_SIZES = [[2],  # 1s
                  [2,  10, 6],  # 4s, 3d, 4p
                  [2,  10, 6],  # 5s, 4d, 5p
                  [2,  14, 10, 6],]  # 6s, 4f, 5d, 6p
-
-ELECTRON_COUNTS = {"B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "P": 15,
-                   "S": 16, "Cl": 17, "As": 33, "Se": 34, "Br": 35, "I": 53}
 
 
 def parse_atom(atom):
@@ -369,7 +367,12 @@ def valence(atom):
     list[int]
         The valences for the given atom.
     """
-    electrons = ELECTRON_COUNTS.get(atom.get('element', '*').capitalize(), 0) - atom.get('charge', 0)
+    element = atom.get("element", '*')
+    if element == '*':
+        electrons = 0
+    else:
+        electrons = PTE[element.capitalize()]['AtomicNumber']
+    electrons -= atom.get('charge', 0)
     # Let's start by filling complete shells:
     for idx, shell in enumerate(ORBITAL_SIZES):
         shell_size = sum(shell)
