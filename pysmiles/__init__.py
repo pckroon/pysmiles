@@ -41,21 +41,10 @@ def _read_pte(pte_file_name):
     pte = {}
     with open(pte_file_name) as pte_file:
         data = load(pte_file)
-    data = data['Table']
-    keys = data['Columns']['Name']
-    types = data['Columns']['Type']
-    elements = data['Row']
-    for element in elements:
-        elem = {}
-        for key, type_, value in zip(keys, types, element["Cell"]):
-            match type_:
-                case "list[str]":
-                    converter = lambda s='': list(str(v) for v in s.split(','))
-                case _:
-                    converter = getattr(builtins, type_)
-            if value:
-                elem[key] = converter(value)
-        pte[elem['Symbol']] = elem
+
+    for row in data['Rows']:
+        element = dict(zip(data['Columns'], row))
+        pte[element['Symbol']] = element
     return pte
 
 
