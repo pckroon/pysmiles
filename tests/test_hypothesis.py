@@ -15,7 +15,7 @@
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
                                  initialize, precondition)
-from hypothesis import note, settings
+from hypothesis import note, settings, assume
 from hypothesis_networkx import graph_builder
 
 from pysmiles import read_smiles
@@ -69,11 +69,18 @@ for edge in arom_triangle.edges:
 
 
 class SMILESTest(RuleBasedStateMachine):
-    @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data,
-                                  min_nodes=1, max_nodes=7))
+    @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data, min_nodes=1, max_nodes=7))
     def setup(self, mol):
         valid_hydrogen_count(mol)
         self.mol = mol
+        try:
+            # Ensure at least the first generated molecule is valid.
+            self.write_read_cycle()
+        except AssertionError:
+            raise
+        except:
+            assume(False)
+
         note(self.mol.nodes(data=True))
         note(self.mol.edges(data=True))
 
@@ -99,7 +106,6 @@ class SMILESTest(RuleBasedStateMachine):
     def increment_bond_orders(self):
         increment_bond_orders(self.mol)
 
-    @precondition(lambda self: hasattr(self, 'mol'))
     @invariant()
     def write_read_cycle(self):
         smiles = write_smiles(self.mol)
@@ -128,5 +134,5 @@ class SMILESTest(RuleBasedStateMachine):
             assertEqualGraphs(ref_mol, found)
 
 
-SMILESTest.TestCase.settings = settings(max_examples=100, stateful_step_count=10)
+SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10)
 Tester = SMILESTest.TestCase

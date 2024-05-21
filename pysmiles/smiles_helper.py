@@ -373,6 +373,10 @@ def valence(atom):
     else:
         electrons = PTE[element.capitalize()]['AtomicNumber']
     electrons -= atom.get('charge', 0)
+
+    if electrons < 0:
+        raise ValueError(f"Atom {atom} has a negative number of electrons: {electrons}")
+
     # Let's start by filling complete shells:
     for idx, shell in enumerate(ORBITAL_SIZES):
         shell_size = sum(shell)
@@ -382,6 +386,7 @@ def valence(atom):
             break
     else:  # nobreak
         raise ValueError(f'Too many electrons for sanity for {atom}: {electrons+sum(map(sum, ORBITAL_SIZES))}')
+
     # Any electrons we have leftover we distribute over the orbitals. First 1
     # electron in each, then we start making pairs. The resulting valence will
     # be the number of unpaired electrons. Added bonus/complication: electrons
@@ -389,18 +394,21 @@ def valence(atom):
     # electrons
     shell = ORBITAL_SIZES[idx]
     shell_size = sum(shell)
-    to_assign = min(electrons, shell_size // 2)
-    single_electrons = to_assign
-    electrons -= to_assign
+    single_electrons, paired_electrons = divmod(electrons, shell_size//2)
+    match single_electrons:
+        case 0:
+            single_electrons, paired_electrons, empty_orbitals = paired_electrons, 0, shell_size//2 - paired_electrons
+        case 1:
+            single_electrons = shell_size//2 - paired_electrons
+            single_electrons, paired_electrons, empty_orbitals = single_electrons, paired_electrons, 0
+        case _:
+            raise AssertionError(f"{single_electrons=}")
 
-    to_assign = min(electrons, shell_size // 2)
-    electron_pairs = to_assign
-    single_electrons -= to_assign
-    electrons -= to_assign
-    assert electrons == 0
-
-    if len(ORBITAL_SIZES[idx+1]) >= 3:
-        val = [single_electrons + 2*n for n in range(electron_pairs+1)]
+    if idx >= 2:
+        # Excite any paired electrons to a higher orbital to deal with
+        # multi-valency. Naturally, each electron pair consists of 2 electrons,
+        # and results in 2 new bonding electrons
+        val = [single_electrons + 2*n for n in range(paired_electrons+1)]
     else:
         val = [single_electrons]
 
