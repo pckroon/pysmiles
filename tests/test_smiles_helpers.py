@@ -460,7 +460,7 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
     mol = make_mol(n_data_in, e_data_in)
     helper(mol, **kwargs)
     ref_mol = make_mol(n_data_out, e_data_out)
-    assertEqualGraphs(mol, make_mol(n_data_out, e_data_out))
+    assertEqualGraphs(mol, ref_mol)
 
 
 @pytest.mark.parametrize('atom, expected', [
@@ -474,3 +474,12 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
 def test_valence(atom, expected):
     found = valence(atom)
     assert found == expected
+
+
+@pytest.mark.parametrize('atom', [
+    {"charge": 1},
+    {"charge": -10000}
+])
+def test_valence_error(atom):
+    with pytest.raises(ValueError):
+        valence(atom)

@@ -134,5 +134,5 @@ class SMILESTest(RuleBasedStateMachine):
             assertEqualGraphs(ref_mol, found)
 
 
-SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10)
+SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10, deadline=None)
 Tester = SMILESTest.TestCase

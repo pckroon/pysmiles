@@ -140,7 +140,7 @@ def format_atom(molecule, node_key, default_element='*'):
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None:
+    if stereo is not None:  # pragma: nocover
         raise NotImplementedError
 
     if aromatic:
@@ -238,7 +238,7 @@ def add_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     h_atom = parse_atom('[H]')
-    if 'hcount' in h_atom:
+    if 'hcount' in h_atom:  # pragma: nocover; defensive
         del h_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
@@ -401,7 +401,7 @@ def valence(atom):
         case 1:
             single_electrons = shell_size//2 - paired_electrons
             single_electrons, paired_electrons, empty_orbitals = single_electrons, paired_electrons, 0
-        case _:
+        case _:  # pragma: nocover
             raise AssertionError(f"{single_electrons=}")
 
     if idx >= 2:
