@@ -356,7 +356,7 @@ def bonds_missing(mol, node_idx, use_order=True):
 def valence(atom):
     """
     Returns the valence of the atom. Since some elements can have
-    multiple valences. The valence is returned as list.
+    multiple valences, the valence is returned as list.
 
     Parameters
     ----------
