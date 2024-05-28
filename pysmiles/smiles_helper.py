@@ -378,7 +378,7 @@ def valence(atom):
         raise ValueError(f"Atom {atom} has a negative number of electrons: {electrons}")
 
     # Let's start by filling complete shells:
-    for idx, shell in enumerate(ORBITAL_SIZES):
+    for shell_idx, shell in enumerate(ORBITAL_SIZES):
         shell_size = sum(shell)
         if shell_size <= electrons:
             electrons -= shell_size
@@ -392,18 +392,20 @@ def valence(atom):
     # be the number of unpaired electrons. Added bonus/complication: electrons
     # in pairs we can excite to higher shells, increasing the number of unpaired
     # electrons
-    shell = ORBITAL_SIZES[idx]
-    shell_size = sum(shell)
-    single_electrons, paired_electrons = divmod(electrons, shell_size//2)
-    if single_electrons == 0:
-        single_electrons, paired_electrons, empty_orbitals = paired_electrons, 0, shell_size//2 - paired_electrons
-    elif single_electrons == 1:
-        single_electrons = shell_size//2 - paired_electrons
-        single_electrons, paired_electrons, empty_orbitals = single_electrons, paired_electrons, 0
-    else:  # pragma: nocover
-        raise AssertionError(f"{single_electrons=}")
+    number_of_orbitals = sum(shell)//2
+    # Round 1: assign single electrons to orbitals
+    single_electrons = min(number_of_orbitals, electrons)
+    electrons -= single_electrons
+    # Round 2: assign second electrons to orbitals to get electron pairs
+    paired_electrons = min(number_of_orbitals, electrons)
+    electrons -= paired_electrons
+    # Of course all single electrons that got paired are no longer single
+    single_electrons -= paired_electrons
+    # Figure out how many orbitals are still empty. Maybe useful for later
+    empty_orbitals = number_of_orbitals - single_electrons - paired_electrons
+    assert electrons == 0, f"There are {electrons=}"
 
-    if idx >= 2:
+    if shell_idx >= 2:
         # Excite any paired electrons to a higher orbital to deal with
         # multi-valency. Naturally, each electron pair consists of 2 electrons,
         # and results in 2 new bonding electrons
