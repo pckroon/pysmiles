@@ -23,6 +23,7 @@ import re
 import operator
 
 import networkx as nx
+from . import PTE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +38,14 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
                           STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
                           CLASS_PATTERN + r'\]$')
 
-VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
-            "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
-
 AROMATIC_ATOMS = "B C N O P S Se As *".split()
+
+ORBITAL_SIZES = [[2],  # 1s
+                 [2,  6],  # 2s, 2p
+                 [2,  6],  # 3s, 3p
+                 [2,  10, 6],  # 4s, 3d, 4p
+                 [2,  10, 6],  # 5s, 4d, 5p
+                 [2,  14, 10, 6],]  # 6s, 4f, 5d, 6p
 
 
 def parse_atom(atom):
@@ -135,7 +140,7 @@ def format_atom(molecule, node_key, default_element='*'):
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None:
+    if stereo is not None:  # pragma: nocover
         raise NotImplementedError
 
     if aromatic:
@@ -233,7 +238,7 @@ def add_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     h_atom = parse_atom('[H]')
-    if 'hcount' in h_atom:
+    if 'hcount' in h_atom:  # pragma: nocover; defensive
         del h_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
@@ -315,7 +320,7 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
         increment_bond_orders(mol, max_bond_order=max_bond_order)
     for n_idx in mol:
         node = mol.nodes[n_idx]
-        if 'hcount' in node and respect_hcount:
+        if ('hcount' in node and respect_hcount) or node.get('element') == 'H':
             continue
         missing = max(bonds_missing(mol, n_idx), 0)
         node['hcount'] = node.get('hcount', 0) + missing
@@ -342,37 +347,72 @@ def bonds_missing(mol, node_idx, use_order=True):
     """
     bonds = _bonds(mol, node_idx, use_order)
     bonds += mol.nodes[node_idx].get('hcount', 0)
-    valence = _valence(mol, node_idx, bonds)
-    return int(valence - bonds)
+
+    val = valence(mol.nodes[node_idx])
+    val = [v for v in val if v >= bonds] or [0]
+    return int(max(val[0] - bonds, 0))
 
 
-def _valence(mol, node_idx, minimum=0):
+def valence(atom):
     """
-    Returns the valence of the specified node. Since some elements can have
-    multiple valences, give the smallest one that is more than `minimum`.
+    Returns the valence of the atom. Since some elements can have
+    multiple valences, the valence is returned as list.
 
     Parameters
     ----------
-    mol : nx.Graph
-        The molecule.
-    node_idx : hashable
-        The node to look at. Should be in mol.
-    minimum : int
-        The minimum value of valence.
+    atom: dict
 
     Returns
     -------
-    int
-        The smallest valence of node more than `minimum`.
+    list[int]
+        The valences for the given atom.
     """
-    element = mol.nodes[node_idx].get('element', '').capitalize()
-    if element not in VALENCES:
-        return 0
-    val = VALENCES.get(element)
-    try:
-        val = min(filter(lambda a: a >= minimum, val))
-    except ValueError:  # More bonds than possible
-        val = max(val)
+    element = atom.get("element", '*')
+    if element == '*':
+        electrons = 0
+    else:
+        electrons = PTE[element.capitalize()]['AtomicNumber']
+    electrons -= atom.get('charge', 0)
+
+    if electrons < 0:
+        raise ValueError(f"Atom {atom} has a negative number of electrons: {electrons}")
+
+    # Let's start by filling complete shells:
+    for shell_idx, shell in enumerate(ORBITAL_SIZES):
+        shell_size = sum(shell)
+        if shell_size <= electrons:
+            electrons -= shell_size
+        else:
+            break
+    else:  # nobreak
+        raise ValueError(f'Too many electrons for sanity for {atom}: {electrons+sum(map(sum, ORBITAL_SIZES))}')
+
+    # Any electrons we have leftover we distribute over the orbitals. First 1
+    # electron in each, then we start making pairs. The resulting valence will
+    # be the number of unpaired electrons. Added bonus/complication: electrons
+    # in pairs we can excite to higher shells, increasing the number of unpaired
+    # electrons
+    number_of_orbitals = sum(shell)//2
+    # Round 1: assign single electrons to orbitals
+    single_electrons = min(number_of_orbitals, electrons)
+    electrons -= single_electrons
+    # Round 2: assign second electrons to orbitals to get electron pairs
+    paired_electrons = min(number_of_orbitals, electrons)
+    electrons -= paired_electrons
+    # Of course all single electrons that got paired are no longer single
+    single_electrons -= paired_electrons
+    # Figure out how many orbitals are still empty. Maybe useful for later
+    empty_orbitals = number_of_orbitals - single_electrons - paired_electrons
+    assert electrons == 0, f"There are {electrons=}"
+
+    if shell_idx >= 2:
+        # Excite any paired electrons to a higher orbital to deal with
+        # multi-valency. Naturally, each electron pair consists of 2 electrons,
+        # and results in 2 new bonding electrons
+        val = [single_electrons + 2*n for n in range(paired_electrons+1)]
+    else:
+        val = [single_electrons]
+
     return val
 
 
@@ -422,19 +462,11 @@ def has_default_h_count(mol, node_idx, use_order=True):
     bool
     """
     bonds = _bonds(mol, node_idx, use_order)
-    valence = _valence(mol, node_idx, bonds)
+    val = valence(mol.nodes[node_idx])
+    val = [v for v in val if v >= bonds] or [0]
     hcount = mol.nodes[node_idx].get('hcount', 0)
-    return valence - bonds == hcount
+    return max(val[0] - bonds, 0) == hcount
 
-
-def _hydrogen_neighbours(mol, n_idx):
-    neighbours = mol[n_idx]
-    h_neighbours = 0
-    for n_jdx in neighbours:
-        if (mol.nodes[n_jdx].get('element', '*') == 'H' and
-                mol.edges[n_idx, n_jdx].get('order', 1) == 1):
-            h_neighbours += 1
-    return h_neighbours
 
 def _prune_nodes(nodes, mol):
     new_nodes = []
@@ -443,10 +475,11 @@ def _prune_nodes(nodes, mol):
         if mol.nodes[node].get('element', '*') == '*':
             new_nodes.append(node)
             continue
-        missing = bonds_missing(mol, node, use_order=True) + mol.nodes[node].get('charge', 0)
+        missing = bonds_missing(mol, node, use_order=True)
         if missing > 0:
             new_nodes.append(node)
     return mol.subgraph(new_nodes)
+
 
 def mark_aromatic_atoms(mol, atoms=None):
     """

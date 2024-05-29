@@ -17,7 +17,8 @@ import pytest
 
 from pysmiles.smiles_helper import (
     correct_aromatic_rings, fill_valence, remove_explicit_hydrogens,
-    add_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges
+    add_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges,
+    valence
 )
 from pysmiles.testhelper import assertEqualGraphs, make_mol
 
@@ -166,7 +167,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         [(0, {'element': 'Tc'}),
          (1, {'element': 'C', 'hcount': 5})],
         [(0, 1, {'order': 1})],
-        [(0, {'element': 'Tc', 'hcount': 0}),
+        [(0, {'element': 'Tc', 'hcount': 6}),
          (1, {'element': 'C', 'hcount': 5})],
         [(0, 1, {'order': 1})],
     ),
@@ -446,7 +447,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (3, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (4, {'element': 'N', 'hcount': 0, 'aromatic': False}),
-         (5, {'element': 'H', 'hcount': 0, 'aromatic': False})],
+         (5, {'element': 'H', 'aromatic': False})],
         [(0, 1, {'order': 2}),
          (1, 2, {'order': 1}),
          (2, 3, {'order': 2}),
@@ -459,4 +460,26 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
     mol = make_mol(n_data_in, e_data_in)
     helper(mol, **kwargs)
     ref_mol = make_mol(n_data_out, e_data_out)
-    assertEqualGraphs(mol, make_mol(n_data_out, e_data_out))
+    assertEqualGraphs(mol, ref_mol)
+
+
+@pytest.mark.parametrize('atom, expected', [
+    ({'element': 'C'}, [4]),
+    ({'element': 'N'}, [3]),
+    ({'element': 'S'}, [2, 4, 6]),
+    ({'element': 'P'}, [3, 5]),
+    ({'element': 'N', 'charge': 1}, [4]),
+    ({'element': 'B', 'charge': 1}, [2]),
+])
+def test_valence(atom, expected):
+    found = valence(atom)
+    assert found == expected
+
+
+@pytest.mark.parametrize('atom', [
+    {"charge": 1},
+    {"charge": -10000}
+])
+def test_valence_error(atom):
+    with pytest.raises(ValueError):
+        valence(atom)
