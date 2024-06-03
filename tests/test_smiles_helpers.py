@@ -506,7 +506,7 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
 
 @pytest.mark.parametrize('atom, expected', [
     ({'element': 'C'}, [4]),
-    ({'element': 'N'}, [3]),
+    ({'element': 'N'}, [3, 5]),
     ({'element': 'S'}, [2, 4, 6]),
     ({'element': 'P'}, [3, 5]),
     ({'element': 'N', 'charge': 1}, [4]),

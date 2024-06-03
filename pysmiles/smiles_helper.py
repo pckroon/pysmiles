@@ -41,11 +41,12 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
 AROMATIC_ATOMS = "B C N O P S Se As *".split()
 
 ORBITAL_SIZES = [[2],  # 1s
-                 [2,  6],  # 2s, 2p
-                 [2,  6],  # 3s, 3p
-                 [2,  10, 6],  # 4s, 3d, 4p
-                 [2,  10, 6],  # 5s, 4d, 5p
-                 [2,  14, 10, 6],]  # 6s, 4f, 5d, 6p
+                 [2, 6],  # 2s, 2p
+                 [2, 6],  # 3s, 3p
+                 [10, 2, 6],  # 3d, 4s,4p
+                 [10, 2, 6],  # 4d, 5s, 5p
+                 [14, 10, 2, 6],  # 4f, 5d, 6s, 6p
+                 [14, 10, 2, 6]]   # 5f, 6d, 7s, 7p
 
 
 def parse_atom(atom):
@@ -349,8 +350,8 @@ def bonds_missing(mol, node_idx, use_order=True):
     bonds += mol.nodes[node_idx].get('hcount', 0)
 
     val = valence(mol.nodes[node_idx])
-    val = [v for v in val if v >= bonds] or [0]
-    return int(max(val[0] - bonds, 0))
+    val = [v for v in val if v >= bonds] or val[-1:]
+    return int(val[0] - bonds)
 
 
 def valence(atom):
@@ -405,13 +406,10 @@ def valence(atom):
     empty_orbitals = number_of_orbitals - single_electrons - paired_electrons
     assert electrons == 0, f"There are {electrons=}"
 
-    if shell_idx >= 2:
-        # Excite any paired electrons to a higher orbital to deal with
-        # multi-valency. Naturally, each electron pair consists of 2 electrons,
-        # and results in 2 new bonding electrons
-        val = [single_electrons + 2*n for n in range(paired_electrons+1)]
-    else:
-        val = [single_electrons]
+    # Excite any paired electrons to a higher orbital to deal with
+    # multi-valency. Naturally, each electron pair consists of 2 electrons,
+    # and results in 2 new bonding electrons
+    val = [single_electrons + 2*n for n in range(paired_electrons+1)]
 
     return val
 
@@ -690,7 +688,7 @@ def increment_bond_orders(molecule, max_bond_order=3):
     # Gather the number of open spots for all atoms beforehand, since some
     # might have multiple oxidation states (e.g. S). We don't want to change
     # oxidation state halfway through for some funny reason. It shouldn't be
-    # nescessary, but it can't hurt.
+    # necessary, but it can't hurt.
     missing_bonds = {}
     for idx in molecule:
         missing_bonds[idx] = max(bonds_missing(molecule, idx), 0)
@@ -700,7 +698,7 @@ def increment_bond_orders(molecule, max_bond_order=3):
         missing_jdx = missing_bonds[jdx]
         edge_missing = min(missing_idx, missing_jdx)
         current_order = molecule.edges[idx, jdx].get("order", 1)
-        if current_order == 1.5:
+        if current_order == 1.5 or current_order >= max_bond_order:
             continue
         new_order = edge_missing + current_order
         new_order = min(new_order, max_bond_order)
