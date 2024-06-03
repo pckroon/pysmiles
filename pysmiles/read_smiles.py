@@ -93,7 +93,7 @@ def _tokenize(smiles):
 
 
 def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True, 
-                reinterpret_aromatic=True):
+                reinterpret_aromatic=True, strict=True):
     """
     Parses a SMILES string.
 
@@ -111,6 +111,9 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     reinterpret_aromatic : bool
         Whether aromaticity should be determined from the created molecule,
         instead of taken from the SMILES string.
+    strict : bool
+        Whether to be more strict in accepting what is a valid SMILES string and
+        what is not.
 
     Returns
     -------
@@ -185,8 +188,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
     if reinterpret_aromatic:
-        arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
-        mark_aromatic_atoms(mol, arom_atoms)
+        mark_aromatic_atoms(mol, strict=strict)
         mark_aromatic_edges(mol)
     else:
         mark_aromatic_edges(mol)
