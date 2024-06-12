@@ -99,8 +99,6 @@ def parse_atom(atom):
 
     if out.get('element') == 'H' and out.get('hcount', 0):
         raise ValueError("A hydrogen atom can't have hydrogens")
-#    if 'stereo' in out:
-#        LOGGER.warning('Atom "%s" contains stereochemical information that will be discarded.', atom)
 
     return out
 
@@ -582,7 +580,7 @@ def increment_bond_orders(molecule, max_bond_order=3):
 def mark_chiral_atoms(molecule):
     """
     For all nodes tagged as chiral, figure out the three
-    substiuents and annotate the node with a tuple that
+    substituents and annotate the node with a tuple that
     has the order in which to rotate. This essentially
     corresponds to the definition of an improper dihedral
     angle centered on the chiral atom.
@@ -613,7 +611,7 @@ def annotate_ez_isomers(molecule, ez_pairs):
     for first, second in ez_pairs:
         ligand_first, anchor_first, ez_first = first
         ligand_second, anchor_second, ez_second = second
-        # here come all the ridcilous cases of EZ in smiles
+        # here come all the ridiculous cases of EZ in smiles
         if ligand_first < anchor_first:
             # case 1 F/C=C/F is trans
             if ez_first == '/' and ez_second == '/':
@@ -638,11 +636,10 @@ def annotate_ez_isomers(molecule, ez_pairs):
             # case 7 C(/F)=C\F
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'trans'
-            # case 4 C(\F)=C\F
+            # case 8 C(\F)=C\F
             elif ez_fist == '\\' and ez_second == '\\':
                 ez_isomer = 'cis'
         # annotate ligands
-        print(ligand_first, ligand_second)
         molecule.nodes[ligand_first]['ez_isomer'] = (ligand_first,
                                                      anchor_first,
                                                      anchor_second,
