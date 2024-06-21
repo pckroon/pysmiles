@@ -176,6 +176,13 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                                      'atom and itself'.format(token))
                 if next_bond or zero_order_bonds:
                     mol.add_edge(idx - 1, jdx, order=next_bond)
+                    # we need to keep track of ring bonds here for the
+                    # chirality assignment
+                    if mol.nodes[idx-1].get('stereo', False):
+                        mol.nodes[idx-1]['stereo'][2].append(jdx)
+                    if mol.nodes[jdx].get('stereo', False):
+                        mol.nodes[jdx]['stereo'][2].append(idx-1)
+
                 next_bond = None
                 del ring_nums[token]
             else:

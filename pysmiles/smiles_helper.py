@@ -100,6 +100,12 @@ def parse_atom(atom):
     if out.get('element') == 'H' and out.get('hcount', 0):
         raise ValueError("A hydrogen atom can't have hydrogens")
 
+    if out.get('stereo', False):
+        if out['hcount'] == 1:
+            out['stereo'] = (out['stereo'], True, [])
+        else:
+            out['stereo'] = (out['stereo'], False, [])
+
     return out
 
 
@@ -586,11 +592,27 @@ def mark_chiral_atoms(molecule):
     angle centered on the chiral atom.
     """
     chiral_nodes = nx.get_node_attributes(molecule, 'stereo')
-    for node, direction in chiral_nodes.items():
-        # discard the node with the lowest index because we
-        # are looking down that node; it is not part of the
-        # stereo projection
-        neighbors = sorted(molecule.neighbors(node))[1:]
+    for node, (direction, implH, rings) in chiral_nodes.items():
+        # first the ring atoms in order
+        # that they were connected then the
+        # other neighboring atoms in order
+        neighbors = rings
+        for neigh in sorted(molecule.neighbors(node)):
+            if neigh not in neighbors:
+                neighbors.append(neigh)
+
+        if implH:
+            # we need to drop the hydrogen from the list as
+            # we are looking along the hydrogen center
+            # axis
+            elements = [molecule.nodes[idx]['element'] for idx in neighbors]
+            del neighbors[elements.index('H')]
+        else:
+            # discard the node with the lowest index because we
+            # are looking down that node; it is not part of the
+            # stereo projection
+            neighbors = neighbors[1:]
+        print(neighbors)
         if len(neighbors) != 3:
             n = len(neighbors) + 1
             msg = (f"Chiral node {node} has {n} neighbors, which "
