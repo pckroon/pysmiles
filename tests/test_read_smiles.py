@@ -692,7 +692,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (3, 4, {'order': 1}),
          (4, 5, {'order': 1}),
          (5, 6, {'order': 1}),
-         (6, 7, {'order': 2}),
+         (6, 7, {'order': 1}),
          (6, 8, {'order': 1}),
          (9, 3, {'order': 1}),
          (10, 3, {'order': 1}),
