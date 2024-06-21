@@ -23,6 +23,7 @@ import re
 import operator
 
 import networkx as nx
+from . import PTE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +38,14 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
                           STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
                           CLASS_PATTERN + r'\]$')
 
-VALENCES = {"B": (3,), "C": (4,), "N": (3, 5), "O": (2,), "P": (3, 5),
-            "S": (2, 4, 6), "F": (1,), "Cl": (1,), "Br": (1,), "I": (1,)}
-
 AROMATIC_ATOMS = "B C N O P S Se As *".split()
+
+ORBITAL_SIZES = [[2],  # 1s
+                 [2,  6],  # 2s, 2p
+                 [2,  6],  # 3s, 3p
+                 [2,  10, 6],  # 4s, 3d, 4p
+                 [2,  10, 6],  # 5s, 4d, 5p
+                 [2,  14, 10, 6],]  # 6s, 4f, 5d, 6p
 
 
 def parse_atom(atom):
@@ -138,10 +143,10 @@ def format_atom(molecule, node_key, default_element='*'):
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None:
+    if stereo is not None:  # pragma: nocover
         raise NotImplementedError
 
-    if aromatic:
+    if aromatic and name in AROMATIC_ATOMS:
         name = name.lower()
 
     if (stereo is None and isotope == '' and charge == 0 and default_h and class_ == '' and
@@ -236,7 +241,7 @@ def add_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     h_atom = parse_atom('[H]')
-    if 'hcount' in h_atom:
+    if 'hcount' in h_atom:  # pragma: nocover; defensive
         del h_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
@@ -318,7 +323,7 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
         increment_bond_orders(mol, max_bond_order=max_bond_order)
     for n_idx in mol:
         node = mol.nodes[n_idx]
-        if 'hcount' in node and respect_hcount:
+        if ('hcount' in node and respect_hcount) or node.get('element') == 'H':
             continue
         missing = max(bonds_missing(mol, n_idx), 0)
         node['hcount'] = node.get('hcount', 0) + missing
@@ -345,37 +350,72 @@ def bonds_missing(mol, node_idx, use_order=True):
     """
     bonds = _bonds(mol, node_idx, use_order)
     bonds += mol.nodes[node_idx].get('hcount', 0)
-    valence = _valence(mol, node_idx, bonds)
-    return int(valence - bonds)
+
+    val = valence(mol.nodes[node_idx])
+    val = [v for v in val if v >= bonds] or [0]
+    return int(max(val[0] - bonds, 0))
 
 
-def _valence(mol, node_idx, minimum=0):
+def valence(atom):
     """
-    Returns the valence of the specified node. Since some elements can have
-    multiple valences, give the smallest one that is more than `minimum`.
+    Returns the valence of the atom. Since some elements can have
+    multiple valences, the valence is returned as list.
 
     Parameters
     ----------
-    mol : nx.Graph
-        The molecule.
-    node_idx : hashable
-        The node to look at. Should be in mol.
-    minimum : int
-        The minimum value of valence.
+    atom: dict
 
     Returns
     -------
-    int
-        The smallest valence of node more than `minimum`.
+    list[int]
+        The valences for the given atom.
     """
-    element = mol.nodes[node_idx].get('element', '').capitalize()
-    if element not in VALENCES:
-        return 0
-    val = VALENCES.get(element)
-    try:
-        val = min(filter(lambda a: a >= minimum, val))
-    except ValueError:  # More bonds than possible
-        val = max(val)
+    element = atom.get("element", '*')
+    if element == '*':
+        electrons = 0
+    else:
+        electrons = PTE[element.capitalize()]['AtomicNumber']
+    electrons -= atom.get('charge', 0)
+
+    if electrons < 0:
+        raise ValueError(f"Atom {atom} has a negative number of electrons: {electrons}")
+
+    # Let's start by filling complete shells:
+    for shell_idx, shell in enumerate(ORBITAL_SIZES):
+        shell_size = sum(shell)
+        if shell_size <= electrons:
+            electrons -= shell_size
+        else:
+            break
+    else:  # nobreak
+        raise ValueError(f'Too many electrons for sanity for {atom}: {electrons+sum(map(sum, ORBITAL_SIZES))}')
+
+    # Any electrons we have leftover we distribute over the orbitals. First 1
+    # electron in each, then we start making pairs. The resulting valence will
+    # be the number of unpaired electrons. Added bonus/complication: electrons
+    # in pairs we can excite to higher shells, increasing the number of unpaired
+    # electrons
+    number_of_orbitals = sum(shell)//2
+    # Round 1: assign single electrons to orbitals
+    single_electrons = min(number_of_orbitals, electrons)
+    electrons -= single_electrons
+    # Round 2: assign second electrons to orbitals to get electron pairs
+    paired_electrons = min(number_of_orbitals, electrons)
+    electrons -= paired_electrons
+    # Of course all single electrons that got paired are no longer single
+    single_electrons -= paired_electrons
+    # Figure out how many orbitals are still empty. Maybe useful for later
+    empty_orbitals = number_of_orbitals - single_electrons - paired_electrons
+    assert electrons == 0, f"There are {electrons=}"
+
+    if shell_idx >= 2:
+        # Excite any paired electrons to a higher orbital to deal with
+        # multi-valency. Naturally, each electron pair consists of 2 electrons,
+        # and results in 2 new bonding electrons
+        val = [single_electrons + 2*n for n in range(paired_electrons+1)]
+    else:
+        val = [single_electrons]
+
     return val
 
 
@@ -425,78 +465,168 @@ def has_default_h_count(mol, node_idx, use_order=True):
     bool
     """
     bonds = _bonds(mol, node_idx, use_order)
-    valence = _valence(mol, node_idx, bonds)
+    val = valence(mol.nodes[node_idx])
+    val = [v for v in val if v >= bonds] or [0]
     hcount = mol.nodes[node_idx].get('hcount', 0)
-    return valence - bonds == hcount
+    return max(val[0] - bonds, 0) == hcount
 
 
-def _hydrogen_neighbours(mol, n_idx):
-    neighbours = mol[n_idx]
-    h_neighbours = 0
-    for n_jdx in neighbours:
-        if (mol.nodes[n_jdx].get('element', '*') == 'H' and
-                mol.edges[n_idx, n_jdx].get('order', 1) == 1):
-            h_neighbours += 1
-    return h_neighbours
+def _prune_nodes(nodes, mol):
+    new_nodes = []
+    for node in nodes:
+        # all wild card nodes are eligible
+        if mol.nodes[node].get('element', '*') == '*':
+            new_nodes.append(node)
+            continue
+        missing = bonds_missing(mol, node, use_order=True)
+        if missing > 0:
+            new_nodes.append(node)
+    return mol.subgraph(new_nodes)
 
 
-def mark_aromatic_atoms(mol, atoms=None):
+def mark_aromatic_atoms(mol, strict=True):
     """
-    Sets the 'aromatic' attribute for all nodes in `mol`. Requires that
-    the 'hcount' on atoms is correct.
+    Aromaticity is defined here as regions that show delocalization induced
+    molecular equivalence (DIME). In other words, regions where alternating
+    single and double bonds can interchange without inducing any charges.
+    This function will correctly identify and mark aromatic atoms within
+    ``mol``, as well as kekulize regions that are marked as aromatic, but do not
+    show DIME.
 
     Parameters
     ----------
     mol : nx.Graph
         The molecule.
-    atoms: collections.abc.Iterable
-        The atoms to act on. Will still analyse the full molecule.
+    strict : bool
+        Whether to raise a SyntaxError if the aromatic region of the molecule
+        cannot be kekulized.
 
     Returns
     -------
     None
         `mol` is modified in-place.
-    """
-    if atoms is None:
-        atoms = set(mol.nodes)
-    aromatic = set()
-    # Only cycles can be aromatic
-    for cycle in nx.cycle_basis(mol):
-        # All atoms should be sp2, so each contributes an electron. We make
-        # sure they are later.
-        electrons = len(cycle)
-        maybe_aromatic = True
 
-        for node_idx in cycle:
-            node = mol.nodes[node_idx]
-            element = node.get('element', '*').capitalize()
-            hcount = node.get('hcount', 0)
-            degree = mol.degree(node_idx) + hcount
-            hcount += _hydrogen_neighbours(mol, node_idx)
-            # Make sure they are possibly aromatic, and are sp2 hybridized
-            if element not in AROMATIC_ATOMS or degree not in (2, 3):
-                maybe_aromatic = False
-                break
-            # Some of the special cases per group. N and O type atoms can
-            # donate an additional electron from a lone pair.
-            # missing cases:
-            #   extracyclic sp2 heteroatom (e.g. =O)
-            #   some charged cases
-            if element in 'N P As'.split() and hcount == 1:
-                electrons += 1
-            elif element in 'O S Se'.split():
-                electrons += 1
-            if node.get('charge', 0) == +1 and not (element == 'C' and hcount == 0):
-                electrons -= 1
-        if maybe_aromatic and int(electrons) % 2 == 0:
-            # definitely (anti) aromatic
-            aromatic.update(cycle)
-    for node_idx in atoms:
-        node = mol.nodes[node_idx]
-        if node_idx not in aromatic:
-            node['aromatic'] = False
+    Raises
+    ------
+    SyntaxError
+        If ``strict`` is True and the aromatic region of the molecule cannot
+        be kekulized.
+    """
+    # prune all nodes from molecule that are eligible and have
+    # full valency
+    arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
+    ds_graph = _prune_nodes(arom_atoms, mol)
+
+    # set the aromatic attribute to False for all nodes
+    # as a precaution
+    nx.set_node_attributes(mol, False, 'aromatic')
+
+    sub_ds_graph = mol.subgraph(ds_graph)
+    max_match = nx.max_weight_matching(sub_ds_graph)
+    # we check if a maximum matching exists and
+    # if it is perfect. if it is not perfect,
+    # this graph originates from a completely invalid
+    # smiles and we raise an error
+    if strict and not nx.is_perfect_matching(sub_ds_graph, max_match):
+        msg = "Your molecule is invalid and cannot be kekulized."
+        raise SyntaxError(msg)
+
+    # From here we want to do 2 things: 1) dekekulize aromatic rings; and 2)
+    # kekulize "aromatic" fragments that are not in a cycle. We only consider
+    # nodes to be aromatic if they can participate in DIME, which means they
+    # must be in a cycle.
+    # 1) Dekekulize aromatic rings
+    # Add all double bonds to the perfect matching we have, and then for every
+    # simple cycle check if the resulting matching is still perfect. You need
+    # to take simple cycles (rather than the cycle basis), for cases like the
+    # following: Take Naphthalene, as entered by a madman: `c12ccccc1=CC=CC=2`
+    # with the following matching produced for the aromatic region:
+    # {(0, 1), (2, 3), (4, 5)}, which will result in non-perfect matchings for
+    # the cycle basis.
+    double_bonds = {e for e in mol.edges if mol.edges[e].get('order', 1) == 2}
+    extended_matching = max_match | double_bonds
+    cycles = list(nx.simple_cycles(mol))
+    for cycle in cycles:
+        is_perfect = nx.is_perfect_matching(mol.subgraph(cycle),
+                                            {e for e in extended_matching if
+                                             all(v in cycle for v in e)})
+        if extended_matching and is_perfect:
+            for node in cycle:
+                mol.nodes[node]['aromatic'] = True
+
+    # 2) Kekulize "aromatic" fragments that do not show DIME
+    nodes_in_cycles = {n for cycle in cycles for n in cycle}
+    for node in mol:
+        if node not in nodes_in_cycles:
+            mol.nodes[node]['aromatic'] = False
+    for edge in max_match:
+        if not all(mol.nodes[v].get('aromatic', False) for v in edge):
+            mol.edges[edge]['order'] = 2
+
+
+def kekulize(mol):
+    """
+    Assigns alternating single and double bonds to all aromatic regions in
+    ``mol``.
+
+    Arguments
+    ---------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        ``mol`` is modified in place.
+
+    Raises
+    ------
+    ValueError
+        If no alternating single and double bonds can be assigned to the
+        aromatic region of ``mol``.
+    """
+    arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic') and mol.nodes[n].get('element') in AROMATIC_ATOMS}
+    aromatic_mol = mol.subgraph(arom_nodes)
+    matching = nx.max_weight_matching(aromatic_mol)
+    if not nx.is_perfect_matching(aromatic_mol, matching):
+        raise ValueError('Aromatic region cannot be kekulized.')
+    for edge in aromatic_mol.edges:
+        if edge in matching or edge[::-1] in matching:
+            mol.edges[edge]['order'] = 2
         else:
-            node['aromatic'] = True
+            mol.edges[edge]['order'] = 1
+        mol.nodes[edge[0]]['aromatic'] = False
+        mol.nodes[edge[1]]['aromatic'] = False
+
+
+def dekekulize(mol):
+    """
+    Finds all cycles in ``mol`` that consist of alternating single and double
+    bonds, and marks them as aromatic.
+
+    Arguments
+    ---------
+    mol : nx.Graph
+        The molecule.
+
+    Returns
+    -------
+    None
+        ``mol`` is modified in place.
+    """
+    double_bonds = {e for e in mol.edges if mol.edges[e].get('order', 1) == 2}
+    cycles = nx.simple_cycles(mol)
+
+    for cycle in cycles:
+        if not all(mol.nodes[n].get('element') in AROMATIC_ATOMS for n in cycle):
+            continue
+        is_perfect = nx.is_perfect_matching(mol.subgraph(cycle),
+                                            {e for e in double_bonds if
+                                             all(v in cycle for v in e)})
+        if is_perfect:
+            for node in cycle:
+                mol.nodes[node]['aromatic'] = True
+    mark_aromatic_edges(mol)
 
 
 def mark_aromatic_edges(mol):
@@ -514,19 +644,14 @@ def mark_aromatic_edges(mol):
     None
         `mol` is modified in-place.
     """
-    for cycle in nx.cycle_basis(mol):
-        for idx, jdx in mol.edges(nbunch=cycle):
-            if idx not in cycle or jdx not in cycle:
-                continue
-            if (mol.nodes[idx].get('aromatic', False)
-                    and mol.nodes[jdx].get('aromatic', False)):
-                mol.edges[idx, jdx]['order'] = 1.5
-    for idx, jdx in mol.edges:
-        if 'order' not in mol.edges[idx, jdx]:
-            mol.edges[idx, jdx]['order'] = 1
+    for edge in mol.edges:
+        if all(mol.nodes[node].get('aromatic', 'False') for node in edge):
+            mol.edges[edge]['order'] = 1.5
+        elif 'order' not in mol.edges[edge]:
+            mol.edges[edge]['order'] = 1
 
 
-def correct_aromatic_rings(mol):
+def correct_aromatic_rings(mol, strict=True):
     """
     Sets hcount for all atoms, marks aromaticity for all atoms, and the order of
     all aromatic bonds to 1.5.
@@ -535,14 +660,17 @@ def correct_aromatic_rings(mol):
     ----------
     mol : nx.Graph
         The molecule.
+    strict : bool
+        Passed to ``mark_aromatic_atoms``.
 
     Returns
     -------
     None
         `mol` is modified in-place.
     """
+    nx.set_node_attributes(mol, True, 'aromatic')
     fill_valence(mol)
-    mark_aromatic_atoms(mol)
+    mark_aromatic_atoms(mol, strict=strict)
     mark_aromatic_edges(mol)
 
 

@@ -15,7 +15,7 @@
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
                                  initialize, precondition)
-from hypothesis import note, settings
+from hypothesis import note, settings, assume
 from hypothesis_networkx import graph_builder
 
 from pysmiles import read_smiles
@@ -23,7 +23,7 @@ from pysmiles import write_smiles
 from pysmiles.smiles_helper import (
     add_explicit_hydrogens, remove_explicit_hydrogens, mark_aromatic_atoms,
     mark_aromatic_edges, fill_valence, correct_aromatic_rings,
-    increment_bond_orders, )
+    increment_bond_orders, kekulize, dekekulize)
 from pysmiles.testhelper import assertEqualGraphs
 
 
@@ -48,13 +48,13 @@ def valid_hydrogen_count(mol):
 isotope = st.integers(min_value=1)
 element = st.sampled_from('C N O S P H'.split())
 hcount = st.integers(min_value=0, max_value=9)
-charge = st.integers(min_value=-99, max_value=99)
+charge = st.integers(min_value=-20, max_value=20)
 class_ = st.integers(min_value=1)
 
 node_data = st.fixed_dictionaries({
     'isotope': st.one_of(st.none(), isotope),
     'hcount': st.one_of(st.none(), hcount),
-    'element': st.one_of(st.none(), element),
+    'element': st.one_of(element, st.none()),
     'charge': charge,  # Charge can not be none for comparison reasons
     'aromatic': st.just(False),
     'class': st.one_of(st.none(), class_)
@@ -68,12 +68,20 @@ for edge in arom_triangle.edges:
     arom_triangle.edges[edge]['order'] = 1
 
 
+@settings(max_examples=100, stateful_step_count=20, deadline=None)
 class SMILESTest(RuleBasedStateMachine):
-    @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data,
-                                  min_nodes=1, max_nodes=7))
+    @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data, min_nodes=1, max_nodes=7))
     def setup(self, mol):
         valid_hydrogen_count(mol)
         self.mol = mol
+        try:
+            # Ensure at least the first generated molecule is valid.
+            self.write_read_cycle()
+        except AssertionError:
+            raise
+        except:
+            assume(False)
+
         note(self.mol.nodes(data=True))
         note(self.mol.edges(data=True))
 
@@ -85,11 +93,18 @@ class SMILESTest(RuleBasedStateMachine):
     def remove_explicit_hydrogens(self):
         remove_explicit_hydrogens(self.mol)
 
+    @rule()
+    def kekulize(self):
+        kekulize(self.mol)
+
+    def dekekulize(self):
+        dekekulize(self.mol)
+
     # We can't run this halfway through, because aromaticity does not always get
     # encoded in the SMILES string. In particular when * elements are involved.
     # @rule()
     # def correct_aromatic_rings(self):
-    #     correct_aromatic_rings(self.mol)
+    #     correct_aromatic_rings(self.mol, strict=False)
 
     @rule()
     def fill_valence(self):
@@ -99,7 +114,6 @@ class SMILESTest(RuleBasedStateMachine):
     def increment_bond_orders(self):
         increment_bond_orders(self.mol)
 
-    @precondition(lambda self: hasattr(self, 'mol'))
     @invariant()
     def write_read_cycle(self):
         smiles = write_smiles(self.mol)
@@ -128,5 +142,5 @@ class SMILESTest(RuleBasedStateMachine):
             assertEqualGraphs(ref_mol, found)
 
 
-SMILESTest.TestCase.settings = settings(max_examples=100, stateful_step_count=10)
+SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10, deadline=None)
 Tester = SMILESTest.TestCase

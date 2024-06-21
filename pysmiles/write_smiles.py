@@ -68,8 +68,8 @@ def _write_edge_symbol(molecule, n_idx, n_jdx):
         Whether an explicit symbol is needed for this edge.
     """
     order = molecule.edges[n_idx, n_jdx].get('order', 1)
-    aromatic_atoms = molecule.nodes[n_idx].get('element', '*').islower() and\
-                     molecule.nodes[n_jdx].get('element', '*').islower()
+    aromatic_atoms = molecule.nodes[n_idx].get('aromatic', False) and\
+                     molecule.nodes[n_jdx].get('aromatic', False)
     aromatic_bond = aromatic_atoms and order == 1.5
     cross_aromatic = aromatic_atoms and order == 1
     single_bond = order == 1
