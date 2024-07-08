@@ -38,15 +38,12 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
                           STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
                           CLASS_PATTERN + r'\]$')
 
-AROMATIC_ATOMS = "B C N O P S Se As *".split()
+ELECTRON_CONFIG_PATTERN = (r'(?:\[[A-Z][a-z]?\])?((?:'
+                           r'(?:[1-9]s(?P<s>[1-2]))|(?:[1-9]p(?P<p>[1-6]))|(?:[1-9]d(?P<d>10|[1-9]))|(?:[1-9]f(?P<f>1[0-4]|[1-9]))'
+                           r'){1,4})(?:\(predicted\))?')
+ELECTRON_CONFIG_PATTERN = re.compile(ELECTRON_CONFIG_PATTERN)
 
-ORBITAL_SIZES = [[2],  # 1s
-                 [2, 6],  # 2s, 2p
-                 [2, 6],  # 3s, 3p
-                 [10, 2, 6],  # 3d, 4s,4p
-                 [10, 2, 6],  # 4d, 5s, 5p
-                 [14, 10, 2, 6],  # 4f, 5d, 6s, 6p
-                 [14, 10, 2, 6]]   # 5f, 6d, 7s, 7p
+AROMATIC_ATOMS = "B C N O P S Se As *".split()
 
 
 def parse_atom(atom):
@@ -296,8 +293,10 @@ def fill_valence(mol, respect_hcount=True, respect_bond_order=True,
     """
     Sets the attribute 'hcount' on all nodes in `mol` that don't have it yet.
     The value to which it is set is based on the node's 'element', and the
-    number of bonds it has. Default valences are as specified by the global
-    variable VALENCES.
+    number of bonds it has. Default valences are determined based on the charge
+    and the electron configuration from the PTE. If we can't determine the
+    valence (for example for transition metals), then the 'hcount' will be set
+    to 0.
 
     Parameters
     ----------
@@ -350,6 +349,8 @@ def bonds_missing(mol, node_idx, use_order=True):
     bonds += mol.nodes[node_idx].get('hcount', 0)
 
     val = valence(mol.nodes[node_idx])
+    if not val:
+        return 0
     val = [v for v in val if v >= bonds] or val[-1:]
     return int(val[0] - bonds)
 
@@ -366,34 +367,39 @@ def valence(atom):
     Returns
     -------
     list[int]
-        The valences for the given atom.
+        The valences for the given atom. Returns an empty list if we don't know.
     """
     element = atom.get("element", '*')
     if element == '*':
-        electrons = 0
-    else:
-        electrons = PTE[element.capitalize()]['AtomicNumber']
+        return []
+
+    electrons = PTE[element.capitalize()]['AtomicNumber']
     electrons -= atom.get('charge', 0)
+    if not electrons:
+        return [0]
+    try:
+        pte_data = PTE[electrons]
+    except KeyError as error:
+        raise ValueError(f"Can't figure out an electron configuration for {atom}"
+                         f" with {electrons} electrons") from error
+    else:
+        electron_config = pte_data['ElectronConfiguration']
+    match = ELECTRON_CONFIG_PATTERN.match(electron_config)
+    # shell_order = ''.join(c for c in match.group(1) if not c.isdigit())
+    electron_config = {k: int(v) for k, v in match.groupdict(default=0).items()}
+    # No idea how d or f electrons contribute to valency. The last case (p+s==0)
+    # is there for Pd, which has config s0p0d10f0...
+    if (electron_config['d'] not in (0, 10) or electron_config['f'] not in (0, 14)
+            or (not electron_config['s']+electron_config['p'])):
+        return []  # No clue what the valence should be or even means
 
-    if electrons < 0:
-        raise ValueError(f"Atom {atom} has a negative number of electrons: {electrons}")
-
-    # Let's start by filling complete shells:
-    for shell_idx, shell in enumerate(ORBITAL_SIZES):
-        shell_size = sum(shell)
-        if shell_size <= electrons:
-            electrons -= shell_size
-        else:
-            break
-    else:  # nobreak
-        raise ValueError(f'Too many electrons for sanity for {atom}: {electrons+sum(map(sum, ORBITAL_SIZES))}')
-
-    # Any electrons we have leftover we distribute over the orbitals. First 1
+    electrons = electron_config['s'] + electron_config['p']
+    # Any sp-electrons we have we distribute over their orbitals. First 1
     # electron in each, then we start making pairs. The resulting valence will
     # be the number of unpaired electrons. Added bonus/complication: electrons
     # in pairs we can excite to higher shells, increasing the number of unpaired
     # electrons
-    number_of_orbitals = sum(shell)//2
+    number_of_orbitals = 4  # 1*s + 3*p
     # Round 1: assign single electrons to orbitals
     single_electrons = min(number_of_orbitals, electrons)
     electrons -= single_electrons
@@ -409,6 +415,9 @@ def valence(atom):
     # Excite any paired electrons to a higher orbital to deal with
     # multi-valency. Naturally, each electron pair consists of 2 electrons,
     # and results in 2 new bonding electrons
+    # This is actually kind of wrong since spd hybridization just doesn't
+    # happen. Produces the right answer though. Most of the time.
+    # https://dx.doi.org/10.1021/ed084p783
     val = [single_electrons + 2*n for n in range(paired_electrons+1)]
 
     return val

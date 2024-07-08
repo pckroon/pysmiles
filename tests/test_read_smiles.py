@@ -325,14 +325,22 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     (
         'Cl[Cu++]Cl',
-        [(0, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False})],
-        [],
+        [
+            (0, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+            (1, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False}),
+            (2, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+        ],
+        [(0, 1, {'order': 1}), (1, 2, {'order': 1})],
         False
     ),
     (
         '[Cu+2](Cl)Cl',
-        [(0, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False})],
-        [],
+        [
+            (0, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False}),
+            (1, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+            (2, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+        ],
+        [(0, 1, {'order': 1}), (0, 2, {'order': 1})],
         False
     ),
     (
