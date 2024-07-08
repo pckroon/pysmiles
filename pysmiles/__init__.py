@@ -45,6 +45,7 @@ def _read_pte(pte_file_name):
     for row in data['Rows']:
         element = dict(zip(data['Columns'], row))
         pte[element['Symbol']] = element
+        pte[element['AtomicNumber']] = element
     return pte
 
 
