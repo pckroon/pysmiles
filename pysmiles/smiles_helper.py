@@ -38,6 +38,14 @@ ATOM_PATTERN = re.compile(r'^\[' + ISOTOPE_PATTERN + ELEMENT_PATTERN +
                           STEREO_PATTERN + HCOUNT_PATTERN + CHARGE_PATTERN +
                           CLASS_PATTERN + r'\]$')
 
+# Used to parse the electron config we get from the PTE. These configs look like
+# [Rn]7s27p65f146d10(predicted) (for Og). We don't care about the core electrons
+# ([Rn] in this case), nor whether it's predicted or measured. Note that the
+# order of the orbitals is *not* consistent, but seems to be related to their
+# energy. We capture the \d[spdf]\d+, and in particular the second number which
+# is the number of electrons in that orbital. In addition, we capture the full
+# electron config (from 7s...d10) in case we need to find the order of the
+# orbitals later.
 ELECTRON_CONFIG_PATTERN = (r'(?:\[[A-Z][a-z]?\])?((?:'
                            r'(?:[1-9]s(?P<s>[1-2]))|(?:[1-9]p(?P<p>[1-6]))|(?:[1-9]d(?P<d>10|[1-9]))|(?:[1-9]f(?P<f>1[0-4]|[1-9]))'
                            r'){1,4})(?:\(predicted\))?')
@@ -382,10 +390,8 @@ def valence(atom):
     except KeyError as error:
         raise ValueError(f"Can't figure out an electron configuration for {atom}"
                          f" with {electrons} electrons") from error
-    else:
-        electron_config = pte_data['ElectronConfiguration']
+    electron_config = pte_data['ElectronConfiguration']
     match = ELECTRON_CONFIG_PATTERN.match(electron_config)
-    # shell_order = ''.join(c for c in match.group(1) if not c.isdigit())
     electron_config = {k: int(v) for k, v in match.groupdict(default=0).items()}
     # No idea how d or f electrons contribute to valency. The last case (p+s==0)
     # is there for Pd, which has config s0p0d10f0...
