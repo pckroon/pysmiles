@@ -244,16 +244,16 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 raise KeyError(f'Node {node} ({format_atom(mol, node)}) has'
                                f' non-standard valence: ...{debug_smiles}...')
 
-    if explicit_hydrogen:
-        add_explicit_hydrogens(mol)
-    else:
-        remove_explicit_hydrogens(mol)
-
     # post-processing of E/Z isomerism
     annotate_ez_isomers(mol, ez_isomer_pairs)
 
     # post-processing of chiral atoms
     # potentially we need all hydrogen in place
     _mark_chiral_atoms(mol)
+
+    if explicit_hydrogen:
+        add_explicit_hydrogens(mol)
+    else:
+        remove_explicit_hydrogens(mol)
 
     return mol

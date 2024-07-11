@@ -257,6 +257,10 @@ def add_explicit_hydrogens(mol):
         mol.add_edges_from([(n_idx, jdx) for jdx in idxs], order=1)
         if 'hcount' in mol.nodes[n_idx]:
             del mol.nodes[n_idx]['hcount']
+        if 'stereo' in mol.nodes[n_idx]:
+            # Replace the implicit hydrogen index  in the stereo definition for
+            # the explicit one.
+            mol.nodes[n_idx]['stereo'] = tuple(n if n != n_idx else idxs[0] for n in mol.nodes[n_idx]['stereo'])
 
 
 def remove_explicit_hydrogens(mol):
@@ -293,6 +297,9 @@ def remove_explicit_hydrogens(mol):
                 continue
             to_remove.add(n_idx)
             mol.nodes[neighbor]['hcount'] = mol.nodes[neighbor].get('hcount', 0) + 1
+            if 'stereo' in mol.nodes[neighbor]:
+                # Replace the explicit hydrogen index for the implicit one
+                mol.nodes[neighbor]['stereo'] = tuple(n if n != n_idx else neighbor for n in mol.nodes[neighbor]['stereo'])
     mol.remove_nodes_from(to_remove)
     for n_idx in mol.nodes:
         if 'hcount' not in mol.nodes[n_idx]:
