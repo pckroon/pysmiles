@@ -289,17 +289,17 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False
     ),
     (
-        '[H]O([H])[H]O([H])[H]',
-        [(1, {'charge': 0, 'element': 'O', 'hcount': 2, 'aromatic': False}),
+        '[H][O+]([H])[H].O([H])[H]',
+        [(1, {'charge': 1, 'element': 'O', 'hcount': 2, 'aromatic': False}),
          (3, {'charge': 0, 'element': 'H', 'hcount': 0, 'aromatic': False}),
          (4, {'charge': 0, 'element': 'O', 'hcount': 2, 'aromatic': False})],
         [(1, 3, {'order': 1}),
-         (3, 4, {'order': 1})],
+         (3, 4, {'order': 0})],
         False
     ),
     (
-        '[H]=C',
-        [(0, {'charge': 0, 'element': 'H', 'hcount': 0, 'aromatic': False}),
+        '[O]=C',
+        [(0, {'charge': 0, 'element': 'O', 'hcount': 0, 'aromatic': False}),
          (1, {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}),],
         [(0, 1, {'order': 2})],
         False
@@ -324,27 +324,35 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False
     ),
     (
-        '[Cu++]',
-        [(0, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False})],
+        'Cl[Cu++]Cl',
+        [
+            (0, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+            (1, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False}),
+            (2, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+        ],
+        [(0, 1, {'order': 1}), (1, 2, {'order': 1})],
+        False
+    ),
+    (
+        '[Cu+2](Cl)Cl',
+        [
+            (0, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False}),
+            (1, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+            (2, {'charge': 0, 'element': 'Cl', 'hcount': 0, 'aromatic': False}),
+        ],
+        [(0, 1, {'order': 1}), (0, 2, {'order': 1})],
+        False
+    ),
+    (
+        '[OgH4+4]',
+        [(0, {'charge': 4, 'element': 'Og', 'hcount': 4, 'aromatic': False})],
         [],
         False
     ),
     (
-        '[Cu+2]',
-        [(0, {'charge': 2, 'element': 'Cu', 'hcount': 0, 'aromatic': False})],
-        [],
-        False
-    ),
-    (
-        '[Uuo+4]',
-        [(0, {'charge': 4, 'element': 'Uuo', 'hcount': 0, 'aromatic': False})],
-        [],
-        False
-    ),
-    (
-        '[2H][CH2]',
+        '[2H][CH2+]',
         [(0, {'charge': 0, 'element': 'H', 'hcount': 0, 'isotope': 2, 'aromatic': False}),
-         (1, {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False})],
+         (1, {'charge': 1, 'element': 'C', 'hcount': 2, 'aromatic': False})],
         [(0, 1, {'order': 1})],
         False
     ),
