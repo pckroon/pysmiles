@@ -788,7 +788,7 @@ def annotate_ez_isomers(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'cis'
             # case 4 F\C=C\F
-            elif ez_fist == '\\' and ez_second == '\\':
+            elif ez_first == '\\' and ez_second == '\\':
                 ez_isomer = 'trans'
         # as in C(/F)
         elif ligand_first > anchor_first:
@@ -802,7 +802,7 @@ def annotate_ez_isomers(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'trans'
             # case 8 C(\F)=C\F
-            elif ez_fist == '\\' and ez_second == '\\':
+            elif ez_first == '\\' and ez_second == '\\':
                 ez_isomer = 'cis'
         # annotate ligands
         molecule.nodes[ligand_first]['ez_isomer'] = (ligand_first,
