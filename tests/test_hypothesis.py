@@ -15,7 +15,7 @@
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
                                  initialize, precondition)
-from hypothesis import note, settings, assume
+from hypothesis import note, settings, assume, HealthCheck
 from hypothesis_networkx import graph_builder
 
 from pysmiles import read_smiles
@@ -142,5 +142,5 @@ class SMILESTest(RuleBasedStateMachine):
             assertEqualGraphs(ref_mol, found)
 
 
-SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10, deadline=None)
+SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10, deadline=None, suppress_health_check=[HealthCheck.filter_too_much])
 Tester = SMILESTest.TestCase

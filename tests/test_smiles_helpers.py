@@ -167,7 +167,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         [(0, {'element': 'Tc'}),
          (1, {'element': 'C', 'hcount': 5})],
         [(0, 1, {'order': 1})],
-        [(0, {'element': 'Tc', 'hcount': 6}),
+        [(0, {'element': 'Tc', 'hcount': 0}),
          (1, {'element': 'C', 'hcount': 5})],
         [(0, 1, {'order': 1})],
     ),
@@ -506,7 +506,7 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
 
 @pytest.mark.parametrize('atom, expected', [
     ({'element': 'C'}, [4]),
-    ({'element': 'N'}, [3]),
+    ({'element': 'N'}, [3, 5]),
     ({'element': 'S'}, [2, 4, 6]),
     ({'element': 'P'}, [3, 5]),
     ({'element': 'N', 'charge': 1}, [4]),
@@ -518,8 +518,8 @@ def test_valence(atom, expected):
 
 
 @pytest.mark.parametrize('atom', [
-    {"charge": 1},
-    {"charge": -10000}
+    {"element": "H", "charge": 5},
+    {"element": "H", "charge": -10000}
 ])
 def test_valence_error(atom):
     with pytest.raises(ValueError):

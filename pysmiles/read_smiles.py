@@ -22,11 +22,13 @@ import logging
 
 import networkx as nx
 
+from . import PTE
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
                             parse_atom, fill_valence, mark_aromatic_edges,
-                            mark_aromatic_atoms)
-
+                            mark_aromatic_atoms, bonds_missing, format_atom)
+from .write_smiles import write_smiles_component
 LOGGER = logging.getLogger(__name__)
+
 
 @enum.unique
 class TokenType(enum.Enum):
@@ -184,7 +186,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 next_bond = None
         elif tokentype == TokenType.EZSTEREO:
             LOGGER.warning('E/Z stereochemical information, which is specified by "%s", will be discarded', token)
-    if ring_nums:
+    if ring_nums and strict:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
     if reinterpret_aromatic:
@@ -193,7 +195,20 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     else:
         mark_aromatic_edges(mol)
 
+    # This is a bit of an overreach, we should only add implicit hydrogens to
+    # atoms in the organic subset. However, all non-organic atoms already have
+    # a hcount, so all is well.
     fill_valence(mol)
+
+    if strict:
+        for node in mol:
+            element = mol.nodes[node].get('element', '*')
+            if element != '*' and element not in PTE:
+                raise KeyError(f'Unknown element {element}')
+            elif element != '*' and bonds_missing(mol, node):
+                debug_smiles = write_smiles_component(nx.ego_graph(mol, node))
+                raise KeyError(f'Node {node} ({format_atom(mol, node)}) has'
+                               f' non-standard valence: ...{debug_smiles}...')
 
     if explicit_hydrogen:
         add_explicit_hydrogens(mol)
