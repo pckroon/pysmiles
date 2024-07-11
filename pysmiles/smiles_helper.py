@@ -113,9 +113,9 @@ def parse_atom(atom):
 
     if out.get('stereo', False):
         if out['hcount'] == 1:
-            out['stereo'] = (out['stereo'], True, [])
+            out['stereo'] = (out['stereo'], [])
         else:
-            out['stereo'] = (out['stereo'], False, [])
+            out['stereo'] = (out['stereo'], [])
 
     return out
 
@@ -724,7 +724,8 @@ def increment_bond_orders(molecule, max_bond_order=3):
         missing_bonds[idx] -= edge_missing
         missing_bonds[jdx] -= edge_missing
 
-def mark_chiral_atoms(molecule):
+
+def _mark_chiral_atoms(molecule):
     """
     For all nodes tagged as chiral, figure out the three
     substituents and annotate the node with a tuple that
@@ -733,42 +734,36 @@ def mark_chiral_atoms(molecule):
     angle centered on the chiral atom.
     """
     chiral_nodes = nx.get_node_attributes(molecule, 'stereo')
-    for node, (direction, implH, rings) in chiral_nodes.items():
+    for node, (direction, rings) in chiral_nodes.items():
         # first the ring atoms in order
         # that they were connected then the
         # other neighboring atoms in order
-        neighbors = rings
-        for neigh in sorted(molecule.neighbors(node)):
-            if neigh not in neighbors:
-                neighbors.append(neigh)
+        bonded_neighbours = sorted(molecule[node])
+        neighbours = [bonded_neighbours[0]] if bonded_neighbours[0] < node else []
+        neighbours += rings
+        for neighbour in bonded_neighbours:
+            if neighbour not in neighbours:
+                neighbours.append(neighbour)
 
-        if implH:
-            # we need to drop the hydrogen from the list as
-            # we are looking along the hydrogen center
-            # axis
-            elements = [molecule.nodes[idx]['element'] for idx in neighbors]
-            del neighbors[elements.index('H')]
-        else:
-            # discard the node with the lowest index because we
-            # are looking down that node; it is not part of the
-            # stereo projection
-            neighbors = neighbors[1:]
-        print(neighbors)
-        if len(neighbors) != 3:
-            n = len(neighbors) + 1
-            msg = (f"Chiral node {node} has {n} neighbors, which "
+        if molecule.nodes[node].get('hcount'):
+            # We have an implicit hydrogen. This is the first atom to determine
+            # the rotation. As a placeholder, we'll put the index of the parent
+            # node.
+            neighbours.insert(1, node)
+
+        if len(neighbours) != 4:
+            msg = (f"Chiral node {node} has {len(neighbours)} neighbors, which "
                     "is different than the four expected for "
-                    "tetrahedral chirality. If the chiral center "
-                    "contains hydrogen you need to set explicit_hydrogen "
-                    "to True.")
+                    "tetrahedral chirality.")
             raise ValueError(msg)
         # the default is anti-clockwise sorting indicated by '@'
         # in this case the nodes are sorted with increasing
         # node index; however @@ means clockwise and the
         # order of nodes is reversed (i.e. with decreasing index)
         if direction == '@@':
-            neighbors = [neighbors[0], neighbors[2], neighbors[1]]
-        molecule.nodes[node]['stereo'] = (node, *neighbors)
+            neighbours = [neighbours[0],  neighbours[1], neighbours[3], neighbours[2]]
+        molecule.nodes[node]['stereo'] = tuple(neighbours)
+
 
 def annotate_ez_isomers(molecule, ez_pairs):
     for first, second in ez_pairs:

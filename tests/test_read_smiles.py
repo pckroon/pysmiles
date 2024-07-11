@@ -616,83 +616,48 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False
     ),
     # chiral center S/L alanine
-    (   'C[C@@H](C(=O)O)N',
-        [(0, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (1, 0, 5, 2)}),
-         (2, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (3, {'element': 'O', 'charge': 0, 'aromatic': False}),
-         (4, {'element': 'O', 'charge': 0, 'aromatic': False}),
-         (5, {'element': 'N', 'charge': 0, 'aromatic': False}),
-         (6, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (7, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (8, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (9, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (10, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (11, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (12, {'charge': 0, 'aromatic': False, 'element': 'H'})],
+    (
+        'C[C@@H](C(=O)O)N',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (0, 1, 5, 2), 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (4, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (5, {'element': 'N', 'charge': 0, 'aromatic': False, 'hcount': 2}),],
         [(0, 1, {'order': 1}),
-         (0, 6, {'order': 1}),
-         (0, 7, {'order': 1}),
-         (0, 8, {'order': 1}),
          (1, 2, {'order': 1}),
          (1, 5, {'order': 1}),
-         (1, 9, {'order': 1}),
          (2, 3, {'order': 2}),
-         (2, 4, {'order': 1}),
-         (4, 10, {'order': 1}),
-         (5, 11, {'order': 1}),
-         (5, 12, {'order': 1})],
-        True
+         (2, 4, {'order': 1}),],
+        False
     ),
     # chiral center R/D alanine
-    (   'C[C@H](C(=O)O)N',
-        [(0, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (1, 0, 2, 5)}),
-         (2, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (3, {'element': 'O', 'charge': 0, 'aromatic': False}),
-         (4, {'element': 'O', 'charge': 0, 'aromatic': False}),
-         (5, {'element': 'N', 'charge': 0, 'aromatic': False}),
-         (6, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (7, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (8, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (9, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (10, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (11, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (12, {'charge': 0, 'aromatic': False, 'element': 'H'})],
+    (
+        'C[C@H](C(=O)O)N',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (0, 1, 2, 5), 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (4, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (5, {'element': 'N', 'charge': 0, 'aromatic': False, 'hcount': 2}), ],
         [(0, 1, {'order': 1}),
-         (0, 6, {'order': 1}),
-         (0, 7, {'order': 1}),
-         (0, 8, {'order': 1}),
          (1, 2, {'order': 1}),
          (1, 5, {'order': 1}),
-         (1, 9, {'order': 1}),
          (2, 3, {'order': 2}),
-         (2, 4, {'order': 1}),
-         (4, 10, {'order': 1}),
-         (5, 11, {'order': 1}),
-         (5, 12, {'order': 1})],
-        True,
+         (2, 4, {'order': 1}), ],
+        False
     ),
     # test with smiles and ring bond
     ('[C@]1(Br)(Cl)CCCC(F)C1',
-        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'stereo': (0, 1, 2, 3)}),
-         (1, {'element': 'Br', 'charge': 0, 'aromatic': False}),
-         (2, {'element': 'Cl', 'charge': 0, 'aromatic': False}),
-         (3, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (4, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (5, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (6, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (7, {'element': 'F', 'charge': 0, 'aromatic': False}),
-         (8, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (9, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (10, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (11, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (12, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (13, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (14, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (15, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (16, {'charge': 0, 'aromatic': False, 'element': 'H'}),
-         (17, {'charge': 0, 'aromatic': False, 'element': 'H'})],
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'stereo': (8, 1, 2, 3), 'hcount': 0}),
+         (1, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (2, {'element': 'Cl', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (7, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (8, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),],
         [(0, 1, {'order': 1}),
          (0, 2, {'order': 1}),
          (0, 3, {'order': 1}),
@@ -701,17 +666,9 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (4, 5, {'order': 1}),
          (5, 6, {'order': 1}),
          (6, 7, {'order': 1}),
-         (6, 8, {'order': 1}),
-         (9, 3, {'order': 1}),
-         (10, 3, {'order': 1}),
-         (11, 4, {'order': 1}),
-         (12, 4, {'order': 1}),
-         (13, 5, {'order': 1}),
-         (14, 5, {'order': 1}),
-         (15, 6, {'order': 1}),
-         (16, 8, {'order': 1}),
-         (17, 8, {'order': 1})],
-        True,)
+         (6, 8, {'order': 1}),],
+        False,
+     ),
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     found = read_smiles(smiles, explicit_hydrogen=explicit_h)
@@ -735,6 +692,32 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
         read_smiles(smiles)
+
+
+
+@pytest.mark.parametrize('smiles,expected', [
+    ('N[C@](Br)(O)C', 'N Br O C'),
+    ('Br[C@](O)(N)C', 'Br O N C'),
+    ('O[C@](Br)(C)N', 'O Br C N'),
+    ('Br[C@](C)(O)N', 'Br C O N'),
+    ('C[C@](Br)(N)O', 'C Br N O'),
+    ('Br[C@](N)(C)O', 'Br N C O'),
+    ('C[C@@](Br)(O)N', 'C Br N O'),
+    ('Br[C@@](N)(O)C', 'Br N C O'),
+    ('[C@@](C)(Br)(O)N', 'C Br N O'),
+    ('[C@@](Br)(N)(O)C', 'Br N C O'),
+    ('N[C@H](O)C', 'N C O C'),
+    ('FC1C[C@](Br)(Cl)CCC1', 'C Br Cl C'),
+    ('[C@]1(Br)(Cl)CCCC(F)C1', 'C Br Cl C'),
+])
+def test_chiral(smiles, expected):
+    molecule = read_smiles(smiles)
+    found = None
+    for n_idx in molecule:
+        if 'stereo' in molecule.nodes[n_idx]:
+            found = molecule.nodes[n_idx]['stereo']
+            break
+    assert [molecule.nodes[n]['element'] for n in found] == expected.split()
 
 
 @pytest.mark.parametrize('smiles, records',[
