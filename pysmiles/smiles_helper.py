@@ -762,8 +762,7 @@ def _mark_chiral_atoms(molecule):
         # that they were connected then the
         # other neighboring atoms in order
         bonded_neighbours = sorted(molecule[node])
-        neighbours = [bonded_neighbours[0]] if bonded_neighbours[0] < node else []
-        neighbours += rings
+        neighbours = list(rings)
         for neighbour in bonded_neighbours:
             if neighbour not in neighbours:
                 neighbours.append(neighbour)
@@ -806,10 +805,10 @@ def _annotate_ez_isomers(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'cis'
             # case 4 F\C=C\F
-            elif ez_first == '\\' and ez_second == '\\':
+            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
                 ez_isomer = 'trans'
         # as in C(/F)=C
-        elif ligand_first > anchor_first:
+        elif ligand_first > anchor_first:  # pragma: no branch
             # case 5 C(\F)=C/F is trans
             if ez_first == '\\' and ez_second == '/':
                 ez_isomer = 'trans'
@@ -820,7 +819,7 @@ def _annotate_ez_isomers(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'trans'
             # case 8 C(\F)=C\F
-            elif ez_first == '\\' and ez_second == '\\':
+            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
                 ez_isomer = 'cis'
         assert ez_isomer is not None
         # annotate ligands
