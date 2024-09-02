@@ -297,15 +297,19 @@ def remove_explicit_hydrogens(mol):
                 continue
             if mol.nodes[n_idx].get('ez_isomer'):
                 anchor = mol.nodes[n_idx]['ez_isomer'][1]
-                for neighbor in mol[anchor]:
-                    if (neighbor != n_idx
-                            and mol.edges[anchor, neighbor].get('order', 1) == 1
-                            and neighbor not in to_remove):
+                for ez_neighbor in mol[anchor]:
+                    if (ez_neighbor != n_idx
+                            and mol.edges[anchor, ez_neighbor].get('order', 1) == 1
+                            and ez_neighbor not in to_remove):
                         # Found the other ligand that's connected to the anchor
                         # with a single bond
-                        mol.nodes[neighbor]['ez_isomer'] = mol.nodes[n_idx]['ez_isomer'].copy()
-                        mol.nodes[neighbor]['ez_isomer'][-1] = 'trans' if mol.nodes[neighbor]['ez_isomer'][1] == 'cis' else 'cis'
-                        mol.nodes[neighbor]['ez_isomer'][0] = neighbor
+                        mol.nodes[ez_neighbor]['ez_isomer'] = mol.nodes[n_idx]['ez_isomer'].copy()
+                        mol.nodes[ez_neighbor]['ez_isomer'][-1] = 'trans' if mol.nodes[ez_neighbor]['ez_isomer'][1] == 'cis' else 'cis'
+                        mol.nodes[ez_neighbor]['ez_isomer'][0] = ez_neighbor
+
+                        ez_partner = mol.nodes[n_idx]['ez_isomer'][3]
+                        mol.nodes[ez_partner]['ez_isomer'][3] = ez_neighbor
+                        mol.nodes[ez_partner]['ez_isomer'][-1] = mol.nodes[ez_neighbor]['ez_isomer'][-1]
                         break
                 else:  # No break
                     # Don't remove the hydrogen, since we need it for the
