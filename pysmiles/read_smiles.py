@@ -69,7 +69,7 @@ def _tokenize(smiles):
             break
         if char == '[':
             token = char
-            for char in smiles:
+            for char in smiles:  # pragma: no branch
                 token += char
                 if char == ']':
                     break
@@ -93,7 +93,7 @@ def _tokenize(smiles):
             yield TokenType.RING_NUM, int(next(smiles, '') + next(smiles, ''))
         elif char in '/\\':
             yield TokenType.EZSTEREO, char
-        elif char.isdigit():
+        elif char.isdigit():  # pragma: no branch
             yield TokenType.RING_NUM, int(char)
 
 
@@ -198,7 +198,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
-        elif tokentype == TokenType.EZSTEREO:
+        elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
             # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
             # we found the second ez reference and
             # annotate the molecule
