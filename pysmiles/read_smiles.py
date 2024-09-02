@@ -26,7 +26,7 @@ from . import PTE
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
                             parse_atom, fill_valence, mark_aromatic_edges,
                             mark_aromatic_atoms,  bonds_missing, format_atom,
-                            _mark_chiral_atoms, annotate_ez_isomers)
+                            _mark_chiral_atoms, _annotate_ez_isomers)
 from .write_smiles import write_smiles_component
 
 LOGGER = logging.getLogger(__name__)
@@ -199,6 +199,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
         elif tokentype == TokenType.EZSTEREO:
+            # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
             # we found the second ez reference and
             # annotate the molecule
             if current_ez:
@@ -245,7 +246,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                                f' non-standard valence: ...{debug_smiles}...')
 
     # post-processing of E/Z isomerism
-    annotate_ez_isomers(mol, ez_isomer_pairs)
+    _annotate_ez_isomers(mol, ez_isomer_pairs)
 
     # post-processing of chiral atoms
     # potentially we need all hydrogen in place

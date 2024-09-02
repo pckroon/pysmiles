@@ -295,6 +295,22 @@ def remove_explicit_hydrogens(mol):
                     mol.edges[n_idx, neighbor].get('order', 1) != 1):
                 # The molecule is H2, or the bond order is not 1.
                 continue
+            if mol.nodes[n_idx].get('ez_isomer'):
+                anchor = mol.nodes[n_idx]['ez_isomer'][1]
+                for neighbor in mol[anchor]:
+                    if (neighbor != n_idx
+                            and mol.edges[anchor, neighbor].get('order', 1) == 1
+                            and neighbor not in to_remove):
+                        # Found the other ligand that's connected to the anchor
+                        # with a single bond
+                        mol.nodes[neighbor]['ez_isomer'] = mol.nodes[n_idx]['ez_isomer'].copy()
+                        mol.nodes[neighbor]['ez_isomer'][-1] = 'trans' if mol.nodes[neighbor]['ez_isomer'][1] == 'cis' else 'cis'
+                        mol.nodes[neighbor]['ez_isomer'][0] = neighbor
+                        break
+                else:  # No break
+                    # Don't remove the hydrogen, since we need it for the
+                    # chirality
+                    continue
             to_remove.add(n_idx)
             mol.nodes[neighbor]['hcount'] = mol.nodes[neighbor].get('hcount', 0) + 1
             if 'stereo' in mol.nodes[neighbor]:
@@ -759,9 +775,10 @@ def _mark_chiral_atoms(molecule):
             neighbours.insert(1, node)
 
         if len(neighbours) != 4:
+            # FIXME Tetrahedral Allene-like Systems such as `NC(Br)=[C@]=C(O)C`
             msg = (f"Chiral node {node} has {len(neighbours)} neighbors, which "
-                    "is different than the four expected for "
-                    "tetrahedral chirality.")
+                    "is different than the four expected for tetrahedral "
+                    "chirality.")
             raise ValueError(msg)
         # the default is anti-clockwise sorting indicated by '@'
         # in this case the nodes are sorted with increasing
@@ -772,10 +789,11 @@ def _mark_chiral_atoms(molecule):
         molecule.nodes[node]['stereo'] = tuple(neighbours)
 
 
-def annotate_ez_isomers(molecule, ez_pairs):
+def _annotate_ez_isomers(molecule, ez_pairs):
     for first, second in ez_pairs:
         ligand_first, anchor_first, ez_first = first
         ligand_second, anchor_second, ez_second = second
+        ez_isomer = None
         # here come all the ridiculous cases of EZ in smiles
         if ligand_first < anchor_first:
             # case 1 F/C=C/F is trans
@@ -790,7 +808,7 @@ def annotate_ez_isomers(molecule, ez_pairs):
             # case 4 F\C=C\F
             elif ez_first == '\\' and ez_second == '\\':
                 ez_isomer = 'trans'
-        # as in C(/F)
+        # as in C(/F)=C
         elif ligand_first > anchor_first:
             # case 5 C(\F)=C/F is trans
             if ez_first == '\\' and ez_second == '/':
@@ -804,6 +822,7 @@ def annotate_ez_isomers(molecule, ez_pairs):
             # case 8 C(\F)=C\F
             elif ez_first == '\\' and ez_second == '\\':
                 ez_isomer = 'cis'
+        assert ez_isomer is not None
         # annotate ligands
         molecule.nodes[ligand_first]['ez_isomer'] = (ligand_first,
                                                      anchor_first,
