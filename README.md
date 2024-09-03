@@ -58,29 +58,34 @@ element attribute.
     specified aromatic fragments can be kekulized. 
 
 ### Stereochemical information
-Currently the library cannot handle stereochemical information, neither E/Z nor
-R/S. Any stereochemical information that was in the SMILES string will be
-*discarded* upon parsing. This means there will be no difference between
-parsing *e.g.* `N[C@](Br)(O)C`, `N[C@@](Br)(O)C` and `NC(Br)(O)C`. Parsing
-these *will result in the same molecule*. The same holds for *e.g.* `F/C=C/F`
-and `FC=CF`. These will result in the same molecule.
+Tetrahedral chirality is stored on nodes in the 'rs_isomer' attribute. It 
+consists of 4 node indices. The first, together with the central atom, 
+indicates the axis of rotation/observation. The last three indices indicate 
+the direction of rotation in counter-clockwise order. For example, when 
+parsing the SMILES `N[C@](Br)(O)C` node 1 (the central carbon) will have 
+'rs_isomer' attribute `(0, 2, 3, 4)`. This means when looking along the axis 
+(0, 1) (nitrogen to carbon), the nodes 2 (bromine), 3 (oxygen), 4 (methyl) 
+will be in counter-clockwise order. If the central atom has an implicit hydrogen
+(which of course does not have its own node index) we use the index of the 
+central atom instead.
+There is currently no way to easily convert this to R/S labels.
 
-Whenever stereochemical information is being discarded a warning will be
-logged using the built-in `logging` module. If you want to disable all the
-messages logged by `pysmiles` you can add the following snippet to your code,
-without interfering with any logging by your own code:
-
-```python
-import logging
-logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than warning
-```
-
+E/Z chirality around double bonds is encoded on nodes in the 'ez_isomer' 
+attribute. This attribute consists of 4 node indices and 1 string indication 
+either 'cis' or 'trans'. The node indices indicate the dihedral angle. For 
+example, when parsing the SMILES `Br/C=C\F` node 0 (the bromine) will have
+'ez_isomer' attribute `[0, 1, 2, 3, 'cis']`. This means the dihedral angle of
+the axes (0, 1) and (2, 3) around the central axis (1, 2) is 0 degrees. 
+There is currently no way to easily convert this to E/Z labels.
 
 ## Writing SMILES
 The function `write_smiles(molecule, default_element='*', start=None)` can be
 used to write SMILES strings from a molecule. The function does *not* check 
 whether your molecule makes chemical sense. Instead, it writes a SMILES 
-representation of the molecule you provided, and nothing else.
+representation of the molecule you provided, and nothing else. It does not 
+yet know how to write stereochemical information that is present in your 
+molecule, and will log a warning if this happens. See below if you need to 
+silence these.
 - `default_element` is the element to use for nodes that do not have an 
     'element' attribute.
 - `start` is the key of the node where the depth first traversal should be 
@@ -226,15 +231,26 @@ print(write_smiles(mol))
 # [O-]C(=O)C(C)(C)C
 ```
 
+## Logging
+Pysmiles uses the python logging module to log warnings. If you need to silence
+these, you can use the following snippet in your code:
+```python
+import logging
+logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than warning
+```
+
 ## Limitations
 - The writer produces non-recommended SMILES strings (as per OpenSmiles).
 - The writer is better described as a "serializer": if the graph provided
     doesn't make chemical sense the produced "SMILES" string will be an
     exact representation of that graph. Because of this, the SMILES string
     will be invalid though.
-- `fill_valence` does not use 'charge' to find the correct valence.
-- There is currently no way of specifying stereo chemical information. The 
-    parser can deal with it, but it will be discarded.
+- The writer cannot deal with stereochemistry, and ignores it.
+- There is no way to easily transform stereochemical information to human 
+  readable labels like R/S/E/Z.
+- Extended stereochemical centers, such as described by `NC(Br)=[C@]=C(O)C` 
+  are not yet supported.
+- Although the SMILES `F/C(/Br)=C\F` is valid, pysmiles does not understand it.
 - It only processes SMILES. This might later be extended to e.g. InChi, SLN,
     SMARTS, etc.
 
