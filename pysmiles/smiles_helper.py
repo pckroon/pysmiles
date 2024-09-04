@@ -149,8 +149,8 @@ def format_atom(molecule, node_key, default_element='*'):
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None:  # pragma: nocover
-        raise NotImplementedError
+    if stereo is not None or node['ez_isomer']:  # pragma: nocover
+        LOGGER.warning("The SMILES writer does not write stereochemical information")
 
     if aromatic and name in AROMATIC_ATOMS:
         name = name.lower()
