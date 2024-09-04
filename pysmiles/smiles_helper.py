@@ -556,7 +556,8 @@ def correct_aromatic_rings(mol, strict=True):
     # full valency
     ds_graph = _prune_nodes(arom_atoms, mol)
 
-    sub_ds_graph = mol.subgraph(ds_graph)
+    sub_ds_graph = mol.subgraph(ds_graph).copy()
+    sub_ds_graph.remove_edges_from(e for e in sub_ds_graph.edges if sub_ds_graph.edges[e].get('order') == 0)
     max_match = nx.max_weight_matching(sub_ds_graph)
     # we check if a maximum matching exists and
     # if it is perfect. if it is not perfect,
@@ -601,7 +602,8 @@ def kekulize(mol):
         aromatic region of ``mol``.
     """
     arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic') and mol.nodes[n].get('element', '*') in AROMATIC_ATOMS}
-    aromatic_mol = mol.subgraph(arom_nodes)
+    aromatic_mol = mol.subgraph(arom_nodes).copy()
+    aromatic_mol.remove_edges_from(e for e in aromatic_mol.edges if aromatic_mol.edges[e].get('order') == 0)
     matching = nx.max_weight_matching(aromatic_mol)
     if not nx.is_perfect_matching(aromatic_mol, matching):
         raise ValueError('Aromatic region cannot be kekulized.')
@@ -635,7 +637,9 @@ def dekekulize(mol):
     # 3) only nodes that have at least 1 single bond can be aromatic
     # Given those two requirements, the aromatic system is spanned by the
     # maximal matching
-    cycles = nx.cycle_basis(mol)
+    submol = mol.copy()
+    submol.remove_edges_from(e for e in submol.edges if submol.edges[e].get('order') == 0)
+    cycles = nx.cycle_basis(submol)
     cycles_nodes = {n for cycle in cycles for n in cycle}
     bond_orders = {}
     for node in mol:
@@ -644,7 +648,7 @@ def dekekulize(mol):
         bond_orders[node] = {mol[node][n].get('order', 1) for n in mol[node]}
     double_bond_atoms = {n for n in bond_orders if {1, 2}  <= bond_orders[n]}
     maybe_aromatic = double_bond_atoms & cycles_nodes
-    matching = nx.max_weight_matching(mol.subgraph(maybe_aromatic))
+    matching = nx.max_weight_matching(submol.subgraph(maybe_aromatic))
     aromatic_nodes = {n for e in matching for n in e}
 
     # The matching may extend into not fully aromatic cycles.
