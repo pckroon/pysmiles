@@ -92,6 +92,37 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False
     ),
     (
+        'c1ccccc1-c1ccccc1',
+        [(0, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (1, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (2, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (3, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (4, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (5, {'charge': 0, 'element': 'C', 'hcount': 0, 'aromatic': True}),
+         (6, {'charge': 0, 'element': 'C', 'hcount': 0, 'aromatic': True}),
+         (7, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (8, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (9, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (10, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (11, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True})
+         ],
+        [(0, 1, {'order': 1.5}),
+         (0, 5, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 6, {'order': 1}),
+         (6, 7, {'order': 1.5}),
+         (6, 11, {'order': 1.5}),
+         (7, 8, {'order': 1.5}),
+         (8, 9, {'order': 1.5}),
+         (9, 10, {'order': 1.5}),
+         (10, 11, {'order': 1.5})
+         ],
+        False
+    ),
+    (
         'C1CC=1',
         [(0, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': False}),
          (1, {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}),
