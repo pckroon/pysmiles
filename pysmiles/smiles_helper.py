@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 ISOTOPE_PATTERN = r'(?P<isotope>[\d]+)?'
 ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|as|se|\*|[A-Z][a-z]{0,2})'
-STEREO_PATTERN = r'(?P<stereo>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
+STEREO_PATTERN = r'(?P<rs_isomer>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
                   r'@TB[\d]{1,2})?'
 HCOUNT_PATTERN = r'(?P<hcount>H[\d]?)?'
 CHARGE_PATTERN = r'(?P<charge>(-|\+)(\++|-+|[\d]{1,2})?)?'
@@ -57,10 +57,6 @@ AROMATIC_ATOMS = "B C N O P S Se As *".split()
 def parse_atom(atom):
     """
     Parses a SMILES atom token, and returns a dict with the information.
-
-    Note
-    ----
-    Can not deal with stereochemical information yet. This gets discarded.
 
     Parameters
     ----------
@@ -95,7 +91,7 @@ def parse_atom(atom):
     parse_helpers = {
         'isotope': int,
         'element': str.capitalize,
-        'stereo': lambda x: x,
+        'rs_isomer': lambda x: x,
         'hcount': parse_hcount,
         'charge': parse_charge,
         'class': int,
@@ -111,8 +107,8 @@ def parse_atom(atom):
     if out.get('element') == 'H' and out.get('hcount', 0):
         raise ValueError("A hydrogen atom can't have hydrogens")
 
-    if 'stereo' in out:
-        LOGGER.warning('Atom "%s" contains stereochemical information that will be discarded.', atom)
+    if out.get('rs_isomer', False):
+        out['rs_isomer'] = (out['rs_isomer'], [])
 
     return out
 
@@ -120,7 +116,7 @@ def parse_atom(atom):
 def format_atom(molecule, node_key, default_element='*'):
     """
     Formats a node following SMILES conventions. Uses the attributes `element`,
-    `charge`, `hcount`, `stereo`, `isotope` and `class`.
+    `charge`, `hcount`, `rs_isomer`, `isotope` and `class`.
 
     Parameters
     ----------
@@ -140,14 +136,14 @@ def format_atom(molecule, node_key, default_element='*'):
     name = node.get('element', default_element)
     charge = node.get('charge', 0)
     hcount = node.get('hcount', 0)
-    stereo = node.get('stereo', None)
+    stereo = node.get('rs_isomer', None)
     isotope = node.get('isotope', '')
     class_ = node.get('class', '')
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None:  # pragma: nocover
-        raise NotImplementedError
+    if stereo is not None or node.get('ez_isomer'):  # pragma: nocover
+        LOGGER.warning("The SMILES writer does not write stereochemical information")
 
     if aromatic and name in AROMATIC_ATOMS:
         name = name.lower()
@@ -254,6 +250,10 @@ def add_explicit_hydrogens(mol):
         mol.add_edges_from([(n_idx, jdx) for jdx in idxs], order=1)
         if 'hcount' in mol.nodes[n_idx]:
             del mol.nodes[n_idx]['hcount']
+        if 'rs_isomer' in mol.nodes[n_idx]:
+            # Replace the implicit hydrogen index  in the stereo definition for
+            # the explicit one.
+            mol.nodes[n_idx]['rs_isomer'] = tuple(n if n != n_idx else idxs[0] for n in mol.nodes[n_idx]['rs_isomer'])
 
 
 def remove_explicit_hydrogens(mol):
@@ -288,8 +288,31 @@ def remove_explicit_hydrogens(mol):
                     mol.edges[n_idx, neighbor].get('order', 1) != 1):
                 # The molecule is H2, or the bond order is not 1.
                 continue
+            if mol.nodes[n_idx].get('ez_isomer'):
+                anchor = mol.nodes[n_idx]['ez_isomer'][1]
+                for ez_neighbor in mol[anchor]:
+                    if (ez_neighbor != n_idx
+                            and mol.edges[anchor, ez_neighbor].get('order', 1) == 1
+                            and ez_neighbor not in to_remove):
+                        # Found the other ligand that's connected to the anchor
+                        # with a single bond
+                        mol.nodes[ez_neighbor]['ez_isomer'] = mol.nodes[n_idx]['ez_isomer'].copy()
+                        mol.nodes[ez_neighbor]['ez_isomer'][-1] = 'trans' if mol.nodes[ez_neighbor]['ez_isomer'][1] == 'cis' else 'cis'
+                        mol.nodes[ez_neighbor]['ez_isomer'][0] = ez_neighbor
+
+                        ez_partner = mol.nodes[n_idx]['ez_isomer'][3]
+                        mol.nodes[ez_partner]['ez_isomer'][3] = ez_neighbor
+                        mol.nodes[ez_partner]['ez_isomer'][-1] = mol.nodes[ez_neighbor]['ez_isomer'][-1]
+                        break
+                else:  # No break
+                    # Don't remove the hydrogen, since we need it for the
+                    # chirality
+                    continue
             to_remove.add(n_idx)
             mol.nodes[neighbor]['hcount'] = mol.nodes[neighbor].get('hcount', 0) + 1
+            if 'rs_isomer' in mol.nodes[neighbor]:
+                # Replace the explicit hydrogen index for the implicit one
+                mol.nodes[neighbor]['rs_isomer'] = tuple(n if n != n_idx else neighbor for n in mol.nodes[neighbor]['rs_isomer'])
     mol.remove_nodes_from(to_remove)
     for n_idx in mol.nodes:
         if 'hcount' not in mol.nodes[n_idx]:
@@ -655,7 +678,7 @@ def mark_aromatic_edges(mol):
         `mol` is modified in-place.
     """
     for edge in mol.edges:
-        if all(mol.nodes[node].get('aromatic', 'False') for node in edge):
+        if all(mol.nodes[node].get('aromatic', False) for node in edge):
             mol.edges[edge]['order'] = 1.5
         elif 'order' not in mol.edges[edge]:
             mol.edges[edge]['order'] = 1
@@ -720,3 +743,90 @@ def increment_bond_orders(molecule, max_bond_order=3):
         molecule.edges[idx, jdx]['order'] = new_order
         missing_bonds[idx] -= edge_missing
         missing_bonds[jdx] -= edge_missing
+
+
+def _mark_chiral_atoms(molecule):
+    """
+    For all nodes tagged as chiral, figure out the three
+    substituents and annotate the node with a tuple that
+    has the order in which to rotate. This essentially
+    corresponds to the definition of an improper dihedral
+    angle centered on the chiral atom.
+    """
+    chiral_nodes = nx.get_node_attributes(molecule, 'rs_isomer')
+    for node, (direction, rings) in chiral_nodes.items():
+        # first the ring atoms in order
+        # that they were connected then the
+        # other neighboring atoms in order
+        bonded_neighbours = sorted(molecule[node])
+        neighbours = list(rings)
+        for neighbour in bonded_neighbours:
+            if neighbour not in neighbours:
+                neighbours.append(neighbour)
+
+        if molecule.nodes[node].get('hcount'):
+            # We have an implicit hydrogen. This is the first atom to determine
+            # the rotation. As a placeholder, we'll put the index of the parent
+            # node.
+            neighbours.insert(1, node)
+
+        if len(neighbours) != 4:
+            # FIXME Tetrahedral Allene-like Systems such as `NC(Br)=[C@]=C(O)C`
+            msg = (f"Chiral node {node} has {len(neighbours)} neighbors, which "
+                    "is different than the four expected for tetrahedral "
+                    "chirality.")
+            raise ValueError(msg)
+        # the default is anti-clockwise sorting indicated by '@'
+        # in this case the nodes are sorted with increasing
+        # node index; however @@ means clockwise and the
+        # order of nodes is reversed (i.e. with decreasing index)
+        if direction == '@@':
+            neighbours = [neighbours[0],  neighbours[1], neighbours[3], neighbours[2]]
+        molecule.nodes[node]['rs_isomer'] = tuple(neighbours)
+
+
+def _annotate_ez_isomers(molecule, ez_pairs):
+    for first, second in ez_pairs:
+        ligand_first, anchor_first, ez_first = first
+        ligand_second, anchor_second, ez_second = second
+        ez_isomer = None
+        # here come all the ridiculous cases of EZ in smiles
+        if ligand_first < anchor_first:
+            # case 1 F/C=C/F is trans
+            if ez_first == '/' and ez_second == '/':
+                ez_isomer = 'trans'
+            # case 2 F\C=C/F
+            elif ez_first == '\\' and ez_second == '/':
+                ez_isomer = 'cis'
+            # case 3 F/C=C\F
+            elif ez_first == '/' and ez_second == '\\':
+                ez_isomer = 'cis'
+            # case 4 F\C=C\F
+            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
+                ez_isomer = 'trans'
+        # as in C(/F)=C
+        elif ligand_first > anchor_first:  # pragma: no branch
+            # case 5 C(\F)=C/F is trans
+            if ez_first == '\\' and ez_second == '/':
+                ez_isomer = 'trans'
+            # case 6 C(/F)=C/F
+            elif ez_first == '/' and ez_second == '/':
+                ez_isomer = 'cis'
+            # case 7 C(/F)=C\F
+            elif ez_first == '/' and ez_second == '\\':
+                ez_isomer = 'trans'
+            # case 8 C(\F)=C\F
+            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
+                ez_isomer = 'cis'
+        assert ez_isomer is not None
+        # annotate ligands
+        molecule.nodes[ligand_first]['ez_isomer'] = (ligand_first,
+                                                     anchor_first,
+                                                     anchor_second,
+                                                     ligand_second,
+                                                     ez_isomer)
+        molecule.nodes[ligand_second]['ez_isomer'] = (ligand_second,
+                                                      anchor_second,
+                                                      anchor_first,
+                                                      ligand_first,
+                                                      ez_isomer)

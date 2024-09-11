@@ -25,8 +25,10 @@ import networkx as nx
 from . import PTE
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
                             parse_atom, fill_valence, mark_aromatic_edges,
-                            mark_aromatic_atoms, bonds_missing, format_atom)
+                            mark_aromatic_atoms,  bonds_missing, format_atom,
+                            _mark_chiral_atoms, _annotate_ez_isomers)
 from .write_smiles import write_smiles_component
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -39,6 +41,7 @@ class TokenType(enum.Enum):
     BRANCH_END = 4
     RING_NUM = 5
     EZSTEREO = 6
+    CHIRAL = 7
 
 
 def _tokenize(smiles):
@@ -66,7 +69,7 @@ def _tokenize(smiles):
             break
         if char == '[':
             token = char
-            for char in smiles:
+            for char in smiles:  # pragma: no branch
                 token += char
                 if char == ']':
                     break
@@ -90,7 +93,7 @@ def _tokenize(smiles):
             yield TokenType.RING_NUM, int(next(smiles, '') + next(smiles, ''))
         elif char in '/\\':
             yield TokenType.EZSTEREO, char
-        elif char.isdigit():
+        elif char.isdigit():  # pragma: no branch
             yield TokenType.RING_NUM, int(char)
 
 
@@ -134,6 +137,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     next_bond = None
     branches = []
     ring_nums = {}
+    current_ez = None
+    prev_token = None
+    prev_type = None
+    ez_isomer_pairs = []
     for tokentype, token in _tokenize(smiles):
         if tokentype == TokenType.ATOM:
             mol.add_node(idx, **parse_atom(token))
@@ -175,6 +182,13 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                                      'atom and itself'.format(token))
                 if next_bond or zero_order_bonds:
                     mol.add_edge(idx - 1, jdx, order=next_bond)
+                    # we need to keep track of ring bonds here for the
+                    # chirality assignment
+                    if mol.nodes[idx-1].get('rs_isomer', False):
+                        mol.nodes[idx-1]['rs_isomer'][1].append(jdx)
+                    if mol.nodes[jdx].get('rs_isomer', False):
+                        mol.nodes[jdx]['rs_isomer'][1].append(idx-1)
+
                 next_bond = None
                 del ring_nums[token]
             else:
@@ -184,10 +198,29 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
-        elif tokentype == TokenType.EZSTEREO:
-            LOGGER.warning('E/Z stereochemical information, which is specified by "%s", will be discarded', token)
+        elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
+            # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
+            # we found the second ez reference and
+            # annotate the molecule
+            if current_ez:
+                ez_isomer_pairs.append((current_ez, (idx, anchor, token)))
+                current_ez = None
+            # current_ez is formatted as:
+            # ligand, anchor, token where ligand is the atom defining CIS/TRANS
+            # we found a token belonging to a branch (e.g. C(\F))
+            elif prev_type == TokenType.BRANCH_START:
+                current_ez = (idx, anchor, token)
+            else:
+                current_ez = (anchor, idx, token)
+
+        prev_token = token
+        prev_type = tokentype
+
     if ring_nums and strict:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
+
+    if current_ez and strict:
+        raise ValueError('There is an unmatched stereochemical token.')
 
     if reinterpret_aromatic:
         mark_aromatic_atoms(mol, strict=strict)
@@ -210,8 +243,14 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 raise KeyError(f'Node {node} ({format_atom(mol, node)}) has'
                                f' non-standard valence: ...{debug_smiles}...')
 
+    # post-processing of E/Z isomerism
+    _annotate_ez_isomers(mol, ez_isomer_pairs)
+    # post-processing of chiral atoms
+    _mark_chiral_atoms(mol)
+
     if explicit_hydrogen:
         add_explicit_hydrogens(mol)
     else:
         remove_explicit_hydrogens(mol)
+
     return mol

@@ -25,7 +25,7 @@ try:
     from importlib.resources import files, as_file
     import atexit
     from contextlib import ExitStack
-except ImportError:
+except ImportError:  # pragma: no cover
     from pathlib import Path
     PTE_FILE_NAME = Path(__file__).parent / "PTE.json"
     del Path

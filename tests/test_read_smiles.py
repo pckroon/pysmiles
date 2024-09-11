@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import pytest
-
+import networkx as nx
 from pysmiles import read_smiles
 from pysmiles.testhelper import assertEqualGraphs, make_mol
 
@@ -615,6 +615,141 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (8, 9, {'order': 1.5})],
         False
     ),
+    # chiral center S/L alanine
+    (
+        'C[C@@H](C(=O)O)N',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'rs_isomer': (0, 1, 5, 2), 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (4, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (5, {'element': 'N', 'charge': 0, 'aromatic': False, 'hcount': 2}),],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (1, 5, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (2, 4, {'order': 1}),],
+        False
+    ),
+    # chiral center R/D alanine
+    (
+        'C[C@H](C(=O)O)N',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'rs_isomer': (0, 1, 2, 5), 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (4, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (5, {'element': 'N', 'charge': 0, 'aromatic': False, 'hcount': 2}), ],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (1, 5, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (2, 4, {'order': 1}), ],
+        False
+    ),
+    (  # R/D ALA, to see if explicit hydrogens work
+        'C[C@H](C(=O)O)N',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'rs_isomer': (0, 9, 2, 5)}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False}),
+         (3, {'element': 'O', 'charge': 0, 'aromatic': False}),
+         (4, {'element': 'O', 'charge': 0, 'aromatic': False}),
+         (5, {'element': 'N', 'charge': 0, 'aromatic': False}),
+         (6, {'charge': 0, 'aromatic': False, 'element': 'H'}),
+         (7, {'charge': 0, 'aromatic': False, 'element': 'H'}),
+         (8, {'charge': 0, 'aromatic': False, 'element': 'H'}),
+         (9, {'charge': 0, 'aromatic': False, 'element': 'H'}),
+         (10, {'charge': 0, 'aromatic': False, 'element': 'H'}),
+         (11, {'charge': 0, 'aromatic': False, 'element': 'H'}),
+         (12, {'charge': 0, 'aromatic': False, 'element': 'H'})],
+        [(0, 1, {'order': 1}),
+         (0, 6, {'order': 1}),
+         (0, 7, {'order': 1}),
+         (0, 8, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (1, 5, {'order': 1}),
+         (1, 9, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (2, 4, {'order': 1}),
+         (4, 10, {'order': 1}),
+         (5, 11, {'order': 1}),
+         (5, 12, {'order': 1})],
+        True
+    ),
+    # test with smiles and ring bond
+    ('[C@]1(Br)(Cl)CCCC(F)C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'rs_isomer': (8, 1, 2, 3), 'hcount': 0}),
+         (1, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (2, {'element': 'Cl', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (7, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (8, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),],
+        [(0, 1, {'order': 1}),
+         (0, 2, {'order': 1}),
+         (0, 3, {'order': 1}),
+         (0, 8, {'order': 1}),
+         (3, 4, {'order': 1}),
+         (4, 5, {'order': 1}),
+         (5, 6, {'order': 1}),
+         (6, 7, {'order': 1}),
+         (6, 8, {'order': 1}),],
+        False,
+    ),
+    ('[C@H]1(Br)CC1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1, 'rs_isomer': (3, 0, 1, 2)}),
+         (1, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),],
+        [(0, 1, {'order': 1}),
+         (0, 2, {'order': 1}),
+         (0, 3, {'order': 1}),
+         (2, 3, {'order': 1}),],
+        False,
+    ),
+    ('C1C[C@H]1Br',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1, 'rs_isomer': (0, 2, 1, 3)}),
+         (3, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (0, 2, {'order': 1}),
+         (2, 3, {'order': 1}),],
+        False,
+    ),
+    (r'F\C=C\F',
+        [(0, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (0, 1, 2, 3, 'trans')}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (3, 2, 1, 0, 'trans')}),],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 2}),
+         (2, 3, {'order': 1}),],
+        False,
+    ),
+    (r'C(/F)=C\F',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (1, 0, 2, 3, 'trans')}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (3, 2, 0, 1, 'trans')}),],
+        [(0, 1, {'order': 1}),
+         (0, 2, {'order': 2}),
+         (2, 3, {'order': 1}),],
+        False,
+    ),
+    (r'C(\F)=C\F',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (1, 0, 2, 3, 'cis')}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (3, 2, 0, 1, 'cis')}),],
+        [(0, 1, {'order': 1}),
+         (0, 2, {'order': 2}),
+         (2, 3, {'order': 1}),],
+        False,
+    ),
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     found = read_smiles(smiles, explicit_hydrogen=explicit_h)
@@ -640,19 +775,49 @@ def test_invalid_smiles(smiles, error_type):
         read_smiles(smiles)
 
 
-@pytest.mark.parametrize('smiles, n_records',[
-    (r'F/C=C/F', 2),
-    (r'C(\F)=C/F', 2),
-    (r'F\C=C/F', 2),
-    (r'C(/F)=C/F', 2),
-    ('NC(Br)=[C@]=C(O)C', 1),
-    ('c1ccccc1', 0)
+
+@pytest.mark.parametrize('smiles,expected', [
+    ('N[C@](Br)(O)C', 'N Br O C'),
+    ('Br[C@](O)(N)C', 'Br O N C'),
+    ('O[C@](Br)(C)N', 'O Br C N'),
+    ('Br[C@](C)(O)N', 'Br C O N'),
+    ('C[C@](Br)(N)O', 'C Br N O'),
+    ('Br[C@](N)(C)O', 'Br N C O'),
+    ('C[C@@](Br)(O)N', 'C Br N O'),
+    ('Br[C@@](N)(O)C', 'Br N C O'),
+    ('[C@@](C)(Br)(O)N', 'C Br N O'),
+    ('[C@@](Br)(N)(O)C', 'Br N C O'),
+    ('N[C@H](O)C', 'N C O C'),
+    ('FC1C[C@](Br)(Cl)CCC1', 'C Br Cl C'),
+    ('[C@]1(Br)(Cl)CCCC(F)C1', 'C Br Cl C'),
 ])
-def test_stereo_logging(caplog, smiles, n_records):
-    read_smiles(smiles, explicit_hydrogen=False)
-    assert len(caplog.records) == n_records
-    for record in caplog.records:
-        assert record.levelname == "WARNING"
+def test_chiral(smiles, expected):
+    molecule = read_smiles(smiles)
+    found = None
+    for n_idx in molecule:
+        if 'rs_isomer' in molecule.nodes[n_idx]:
+            found = molecule.nodes[n_idx]['rs_isomer']
+            break
+    assert [molecule.nodes[n]['element'] for n in found] == expected.split()
+
+
+@pytest.mark.parametrize('smiles, records',[
+    (r'F/C=C/F', [(0, 1, 2, 3, 'trans'), (3, 2, 1, 0, 'trans')]),
+    (r'C(\F)=C/F', [(1, 0, 2, 3, 'trans'), (3, 2, 0, 1, 'trans')]),
+    (r'F\C=C/F', [(0, 1, 2, 3, 'cis'), (3, 2, 1, 0, 'cis')]),
+    (r'C(/F)=C/F', [(1, 0, 2, 3, 'cis'), (3, 2, 0, 1, 'cis')]),
+    (r'F/C(CC)=C/F', [(0, 1, 4, 5, 'trans'), (5, 4, 1, 0, 'trans')]),
+    (r'F/C=C=C=C/F', [(0, 1, 4, 5, 'trans'), (5, 4, 1, 0, 'trans')]),
+    (r'F/C=C=C=C\F', [(0, 1, 4, 5, 'cis'), (5, 4, 1, 0, 'cis')]),
+    ('c1ccccc1', None)
+])
+def test_cis_trans_reading(smiles, records):
+    mol = read_smiles(smiles, explicit_hydrogen=False)
+    if records:
+        for record in records:
+            assert mol.nodes[record[0]]['ez_isomer'] == record
+    else:
+        assert len(nx.get_node_attributes(mol, 'ez_isomer')) == 0
 
 
 @pytest.mark.parametrize('smiles', (
