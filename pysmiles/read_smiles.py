@@ -210,8 +210,6 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
             # we found a token belonging to a branch (e.g. C(\F))
             elif prev_type == TokenType.BRANCH_START:
                 current_ez = (idx, anchor, token)
-#            elif prev_type == TokenType.BRANCH_STOP:
-#                raise ValueError(f"The E/Z token {token} may not follow a closing bracket.")
             else:
                 current_ez = (anchor, idx, token)
 
