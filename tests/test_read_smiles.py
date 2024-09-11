@@ -619,7 +619,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     (
         'C[C@@H](C(=O)O)N',
         [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
-         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (0, 1, 5, 2), 'hcount': 1}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'rs_isomer': (0, 1, 5, 2), 'hcount': 1}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (3, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (4, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1}),
@@ -635,7 +635,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     (
         'C[C@H](C(=O)O)N',
         [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
-         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (0, 1, 2, 5), 'hcount': 1}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'rs_isomer': (0, 1, 2, 5), 'hcount': 1}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (3, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (4, {'element': 'O', 'charge': 0, 'aromatic': False, 'hcount': 1}),
@@ -650,7 +650,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     (  # R/D ALA, to see if explicit hydrogens work
         'C[C@H](C(=O)O)N',
         [(0, {'element': 'C', 'charge': 0, 'aromatic': False}),
-         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'stereo': (0, 9, 2, 5)}),
+         (1, {'charge': 0, 'aromatic': False, 'element': 'C', 'rs_isomer': (0, 9, 2, 5)}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False}),
          (3, {'element': 'O', 'charge': 0, 'aromatic': False}),
          (4, {'element': 'O', 'charge': 0, 'aromatic': False}),
@@ -678,7 +678,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     # test with smiles and ring bond
     ('[C@]1(Br)(Cl)CCCC(F)C1',
-        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'stereo': (8, 1, 2, 3), 'hcount': 0}),
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'rs_isomer': (8, 1, 2, 3), 'hcount': 0}),
          (1, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (2, {'element': 'Cl', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
@@ -699,7 +699,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False,
     ),
     ('[C@H]1(Br)CC1',
-        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1, 'stereo': (3, 0, 1, 2)}),
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1, 'rs_isomer': (3, 0, 1, 2)}),
          (1, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
          (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),],
@@ -712,7 +712,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ('C1C[C@H]1Br',
         [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
          (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
-         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1, 'stereo': (0, 2, 1, 3)}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1, 'rs_isomer': (0, 2, 1, 3)}),
          (3, {'element': 'Br', 'charge': 0, 'aromatic': False, 'hcount': 0}),],
         [(0, 1, {'order': 1}),
          (1, 2, {'order': 1}),
@@ -795,8 +795,8 @@ def test_chiral(smiles, expected):
     molecule = read_smiles(smiles)
     found = None
     for n_idx in molecule:
-        if 'stereo' in molecule.nodes[n_idx]:
-            found = molecule.nodes[n_idx]['stereo']
+        if 'rs_isomer' in molecule.nodes[n_idx]:
+            found = molecule.nodes[n_idx]['rs_isomer']
             break
     assert [molecule.nodes[n]['element'] for n in found] == expected.split()
 

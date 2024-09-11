@@ -184,10 +184,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                     mol.add_edge(idx - 1, jdx, order=next_bond)
                     # we need to keep track of ring bonds here for the
                     # chirality assignment
-                    if mol.nodes[idx-1].get('stereo', False):
-                        mol.nodes[idx-1]['stereo'][1].append(jdx)
-                    if mol.nodes[jdx].get('stereo', False):
-                        mol.nodes[jdx]['stereo'][1].append(idx-1)
+                    if mol.nodes[idx-1].get('rs_isomer', False):
+                        mol.nodes[idx-1]['rs_isomer'][1].append(jdx)
+                    if mol.nodes[jdx].get('rs_isomer', False):
+                        mol.nodes[jdx]['rs_isomer'][1].append(idx-1)
 
                 next_bond = None
                 del ring_nums[token]
@@ -245,9 +245,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
 
     # post-processing of E/Z isomerism
     _annotate_ez_isomers(mol, ez_isomer_pairs)
-
     # post-processing of chiral atoms
-    # potentially we need all hydrogen in place
     _mark_chiral_atoms(mol)
 
     if explicit_hydrogen:

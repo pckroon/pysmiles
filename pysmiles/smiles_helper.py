@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 ISOTOPE_PATTERN = r'(?P<isotope>[\d]+)?'
 ELEMENT_PATTERN = r'(?P<element>b|c|n|o|s|p|as|se|\*|[A-Z][a-z]{0,2})'
-STEREO_PATTERN = r'(?P<stereo>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
+STEREO_PATTERN = r'(?P<rs_isomer>@|@@|@TH[1-2]|@AL[1-2]|@SP[1-3]|@OH[\d]{1,2}|'\
                   r'@TB[\d]{1,2})?'
 HCOUNT_PATTERN = r'(?P<hcount>H[\d]?)?'
 CHARGE_PATTERN = r'(?P<charge>(-|\+)(\++|-+|[\d]{1,2})?)?'
@@ -57,10 +57,6 @@ AROMATIC_ATOMS = "B C N O P S Se As *".split()
 def parse_atom(atom):
     """
     Parses a SMILES atom token, and returns a dict with the information.
-
-    Note
-    ----
-    Can not deal with stereochemical information yet. This gets discarded.
 
     Parameters
     ----------
@@ -95,7 +91,7 @@ def parse_atom(atom):
     parse_helpers = {
         'isotope': int,
         'element': str.capitalize,
-        'stereo': lambda x: x,
+        'rs_isomer': lambda x: x,
         'hcount': parse_hcount,
         'charge': parse_charge,
         'class': int,
@@ -111,11 +107,8 @@ def parse_atom(atom):
     if out.get('element') == 'H' and out.get('hcount', 0):
         raise ValueError("A hydrogen atom can't have hydrogens")
 
-    if out.get('stereo', False):
-        if out['hcount'] == 1:
-            out['stereo'] = (out['stereo'], [])
-        else:
-            out['stereo'] = (out['stereo'], [])
+    if out.get('rs_isomer', False):
+        out['rs_isomer'] = (out['rs_isomer'], [])
 
     return out
 
@@ -123,7 +116,7 @@ def parse_atom(atom):
 def format_atom(molecule, node_key, default_element='*'):
     """
     Formats a node following SMILES conventions. Uses the attributes `element`,
-    `charge`, `hcount`, `stereo`, `isotope` and `class`.
+    `charge`, `hcount`, `rs_isomer`, `isotope` and `class`.
 
     Parameters
     ----------
@@ -143,7 +136,7 @@ def format_atom(molecule, node_key, default_element='*'):
     name = node.get('element', default_element)
     charge = node.get('charge', 0)
     hcount = node.get('hcount', 0)
-    stereo = node.get('stereo', None)
+    stereo = node.get('rs_isomer', None)
     isotope = node.get('isotope', '')
     class_ = node.get('class', '')
     aromatic = node.get('aromatic', False)
@@ -257,10 +250,10 @@ def add_explicit_hydrogens(mol):
         mol.add_edges_from([(n_idx, jdx) for jdx in idxs], order=1)
         if 'hcount' in mol.nodes[n_idx]:
             del mol.nodes[n_idx]['hcount']
-        if 'stereo' in mol.nodes[n_idx]:
+        if 'rs_isomer' in mol.nodes[n_idx]:
             # Replace the implicit hydrogen index  in the stereo definition for
             # the explicit one.
-            mol.nodes[n_idx]['stereo'] = tuple(n if n != n_idx else idxs[0] for n in mol.nodes[n_idx]['stereo'])
+            mol.nodes[n_idx]['rs_isomer'] = tuple(n if n != n_idx else idxs[0] for n in mol.nodes[n_idx]['rs_isomer'])
 
 
 def remove_explicit_hydrogens(mol):
@@ -317,9 +310,9 @@ def remove_explicit_hydrogens(mol):
                     continue
             to_remove.add(n_idx)
             mol.nodes[neighbor]['hcount'] = mol.nodes[neighbor].get('hcount', 0) + 1
-            if 'stereo' in mol.nodes[neighbor]:
+            if 'rs_isomer' in mol.nodes[neighbor]:
                 # Replace the explicit hydrogen index for the implicit one
-                mol.nodes[neighbor]['stereo'] = tuple(n if n != n_idx else neighbor for n in mol.nodes[neighbor]['stereo'])
+                mol.nodes[neighbor]['rs_isomer'] = tuple(n if n != n_idx else neighbor for n in mol.nodes[neighbor]['rs_isomer'])
     mol.remove_nodes_from(to_remove)
     for n_idx in mol.nodes:
         if 'hcount' not in mol.nodes[n_idx]:
@@ -685,7 +678,7 @@ def mark_aromatic_edges(mol):
         `mol` is modified in-place.
     """
     for edge in mol.edges:
-        if all(mol.nodes[node].get('aromatic', 'False') for node in edge):
+        if all(mol.nodes[node].get('aromatic', False) for node in edge):
             mol.edges[edge]['order'] = 1.5
         elif 'order' not in mol.edges[edge]:
             mol.edges[edge]['order'] = 1
@@ -760,7 +753,7 @@ def _mark_chiral_atoms(molecule):
     corresponds to the definition of an improper dihedral
     angle centered on the chiral atom.
     """
-    chiral_nodes = nx.get_node_attributes(molecule, 'stereo')
+    chiral_nodes = nx.get_node_attributes(molecule, 'rs_isomer')
     for node, (direction, rings) in chiral_nodes.items():
         # first the ring atoms in order
         # that they were connected then the
@@ -789,7 +782,7 @@ def _mark_chiral_atoms(molecule):
         # order of nodes is reversed (i.e. with decreasing index)
         if direction == '@@':
             neighbours = [neighbours[0],  neighbours[1], neighbours[3], neighbours[2]]
-        molecule.nodes[node]['stereo'] = tuple(neighbours)
+        molecule.nodes[node]['rs_isomer'] = tuple(neighbours)
 
 
 def _annotate_ez_isomers(molecule, ez_pairs):

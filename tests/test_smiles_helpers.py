@@ -106,7 +106,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     (
         remove_explicit_hydrogens, {},
         [(0, {'element': 'H', 'hcount': 0}),
-         (1, {'element': 'C', 'hcount': 0, 'stereo': (0, 2, 3, 4)}),
+         (1, {'element': 'C', 'hcount': 0, 'rs_isomer': (0, 2, 3, 4)}),
          (2, {'element': 'Br', 'hcount': 0}),
          (3, {'element': 'F', 'hcount': 0}),
          (4, {'element': 'C', 'hcount': 3})],
@@ -114,7 +114,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, 2, {'order': 1}),
          (1, 3, {'order': 1}),
          (1, 4, {'order': 1}),],
-        [(1, {'element': 'C', 'hcount': 1, 'stereo': (1, 2, 3, 4)}),
+        [(1, {'element': 'C', 'hcount': 1, 'rs_isomer': (1, 2, 3, 4)}),
          (2, {'element': 'Br', 'hcount': 0}),
          (3, {'element': 'F', 'hcount': 0}),
          (4, {'element': 'C', 'hcount': 3})],
