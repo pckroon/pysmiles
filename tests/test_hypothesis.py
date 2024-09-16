@@ -16,7 +16,6 @@ from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
                                  initialize, precondition, Bundle)
 from hypothesis import note, settings, assume, HealthCheck
-from hypothesis_networkx import graph_builder
 
 import networkx as nx
 
@@ -29,15 +28,10 @@ from pysmiles.smiles_helper import (
 from pysmiles.testhelper import assertEqualGraphs
 
 isotope = st.integers(min_value=1)
-element = st.sampled_from('C N O S P'.split())
-charge = st.integers(min_value=-2, max_value=2)
 class_ = st.integers(min_value=1)
 
-node_data = st.fixed_dictionaries({
+NODE_DATA = st.fixed_dictionaries({
     'isotope': st.one_of(st.none(), isotope),
-    'element': st.one_of(element),
-    'charge': charge,  # Charge can not be none for comparison reasons
-    'aromatic': st.just(False),
     'class': st.one_of(st.none(), class_)
 }).map(lambda d: {k: v for k, v in d.items() if v is not None})
 FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-]'.split())
@@ -75,15 +69,63 @@ class SMILESTest(RuleBasedStateMachine):
         self.mol.nodes[first_node]['hcount'] -= order
         self.mol.nodes[second_node]['hcount'] -= order
 
+    @rule(data=st.data())
+    def increment_edge_order(self, data):
+        options = []
+        for n1, n2 in self.mol.edges:
+            order = self.mol.edges[(n1, n2)].get('order', 1)
+            if order < 4 and order != 1.5 and self.mol.nodes[n1].get('hcount') and self.mol.nodes[n2].get('hcount'):
+                options.append((n1, n2))
+        if not options:
+            return
+        edge = data.draw(st.sampled_from(options), label='edge')
+        self.mol.edges[edge]['order'] = self.mol.edges[edge].get('order', 1) + 1
+        self.mol.nodes[edge[0]]['hcount'] -= 1
+        self.mol.nodes[edge[1]]['hcount'] -= 1
+
+    @rule(data=st.data())
+    def decrement_edge_order(self, data):
+        options = []
+        for edge in self.mol.edges:
+            order = self.mol.edges[edge].get('order', 1)
+            if order >= 1 and order != 1.5:  # 0-order is allowed, because why not.
+                options.append(edge)
+        if not options:
+            return
+        edge = data.draw(st.sampled_from(options), label='edge')
+        self.mol.edges[edge]['order'] = self.mol.edges[edge].get('order', 1) - 1
+        self.mol.nodes[edge[0]]['hcount'] += 1
+        self.mol.nodes[edge[1]]['hcount'] += 1
+
+    @rule(data=st.data())
+    def decorate_node(self, data):
+        node_data = st.dictionaries(
+            keys=st.sampled_from(list(self.mol.nodes)),
+            values=NODE_DATA
+        )
+        node_data = data.draw(node_data, label='node_data')
+        for idx, attrs in node_data.items():
+            self.mol.nodes[idx].update(attrs)
+
+    @rule(data=st.data())
+    def change_charge(self, data):
+        candidates = [(idx, self.mol.nodes[idx]['hcount']) for idx in self.mol if self.mol.nodes[idx].get('hcount')]
+        delta = st.fixed_dictionaries({}, optional={idx: st.integers(min_value=-hcount, max_value=hcount) for (idx, hcount) in candidates})
+        delta = data.draw(delta, label='charge change')
+        for idx, charge in delta.items():
+            self.mol.nodes[idx]['charge'] += charge
+            del self.mol.nodes[idx]['hcount']
+        fill_valence(self.mol)
+
     @rule()
-    def add_explicit_hydrogens(self):
+    def cycle_explicit_hydrogens(self):
         add_explicit_hydrogens(self.mol)
         remove_explicit_hydrogens(self.mol)
 
     @rule(function=st.sampled_from([
         (kekulize, {}),
         (dekekulize, {}),
-        (correct_aromatic_rings, {'strict': False}),
+        (correct_aromatic_rings, {'strict': True}),
         (fill_valence, {}),
         (increment_bond_orders, {}),
     ]))
