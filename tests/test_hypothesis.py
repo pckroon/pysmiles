@@ -34,7 +34,7 @@ NODE_DATA = st.fixed_dictionaries({
     'isotope': st.one_of(st.none(), isotope),
     'class': st.one_of(st.none(), class_)
 }).map(lambda d: {k: v for k, v in d.items() if v is not None})
-FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-]'.split())
+FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-] *'.split())
 
 @settings(max_examples=500, stateful_step_count=100, deadline=None)
 class SMILESTest(RuleBasedStateMachine):
@@ -61,7 +61,10 @@ class SMILESTest(RuleBasedStateMachine):
             new_fragment = read_smiles(new_fragment)
             mapping = dict(zip(range(len(new_fragment)), range(len(self.mol), len(self.mol)+len(new_fragment))))
             nx.relabel_nodes(new_fragment, mapping, copy=False)
-            second_node = data.draw(st.sampled_from(sorted(n for n in new_fragment if new_fragment.nodes[n].get('hcount'))), label='second_node')
+            # need to have at least one hydrogen or * to add an edge.
+            candidates = [n for n in new_fragment if new_fragment.nodes[n].get('hcount') or new_fragment.nodes[n].get('element', '*') == '*']
+            assume(candidates)
+            second_node = data.draw(st.sampled_from(sorted(candidates)), label='second_node')
             self.mol.update(new_fragment)
         max_order = min(self.mol.nodes[first_node].get('hcount', 0), self.mol.nodes[second_node].get('hcount', 0), 4)
         order = data.draw(st.one_of(st.integers(min_value=0, max_value=max_order)), label='order')

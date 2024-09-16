@@ -563,7 +563,7 @@ def correct_aromatic_rings(mol, strict=True):
     # if it is perfect. if it is not perfect,
     # this graph originates from a completely invalid
     # smiles and we raise an error
-    if not nx.is_perfect_matching(sub_ds_graph, max_match):
+    if max_match and not nx.is_perfect_matching(sub_ds_graph, max_match):
         msg = "Your molecule is invalid and cannot be kekulized."
         if strict:
             raise SyntaxError(msg)
