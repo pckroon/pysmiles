@@ -14,17 +14,16 @@
 # limitations under the License.
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
-                                 initialize, precondition, Bundle)
-from hypothesis import note, settings, assume, HealthCheck
+                                 initialize)
+from hypothesis import note, settings, assume
 
 import networkx as nx
 
 from pysmiles import read_smiles
 from pysmiles import write_smiles
 from pysmiles.smiles_helper import (
-    add_explicit_hydrogens, remove_explicit_hydrogens, correct_aromatic_rings,
-    fill_valence,
-    increment_bond_orders, kekulize, dekekulize)
+    add_explicit_hydrogens, remove_explicit_hydrogens, fill_valence,
+    correct_aromatic_rings, increment_bond_orders, kekulize, dekekulize)
 from pysmiles.testhelper import assertEqualGraphs
 
 isotope = st.integers(min_value=1)
@@ -38,8 +37,6 @@ FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-] *'.split())
 
 @settings(max_examples=500, stateful_step_count=100, deadline=None)
 class SMILESTest(RuleBasedStateMachine):
-    molecule = Bundle("molecule")
-
     @initialize(fragment=FRAGMENTS)
     def setup(self, fragment):
         self.mol = read_smiles(fragment)
