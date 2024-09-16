@@ -42,9 +42,13 @@ class SMILESTest(RuleBasedStateMachine):
         self.mol = read_smiles(fragment)
         note(self.mol.nodes(data=True))
 
+    @staticmethod
+    def _get_bonding_nodes(mol):
+        return set(n for n in mol if mol.nodes[n].get('hcount') or mol.nodes[n].get('element', '*') == '*')
+
     @rule(data=st.data())
     def add_edge(self, data):
-        nodes_with_hydrogen = set(n for n in self.mol if self.mol.nodes[n].get('hcount'))
+        nodes_with_hydrogen = self._get_bonding_nodes(self.mol)
         assume(nodes_with_hydrogen)
         first_node = data.draw(st.sampled_from(sorted(nodes_with_hydrogen)), label='first_node')
         possibles = sorted(nodes_with_hydrogen - {first_node} - set(self.mol[first_node]))
@@ -59,22 +63,33 @@ class SMILESTest(RuleBasedStateMachine):
             mapping = dict(zip(range(len(new_fragment)), range(len(self.mol), len(self.mol)+len(new_fragment))))
             nx.relabel_nodes(new_fragment, mapping, copy=False)
             # need to have at least one hydrogen or * to add an edge.
-            candidates = [n for n in new_fragment if new_fragment.nodes[n].get('hcount') or new_fragment.nodes[n].get('element', '*') == '*']
+            candidates = self._get_bonding_nodes(new_fragment)
             assume(candidates)
             second_node = data.draw(st.sampled_from(sorted(candidates)), label='second_node')
             self.mol.update(new_fragment)
-        max_order = min(self.mol.nodes[first_node].get('hcount', 0), self.mol.nodes[second_node].get('hcount', 0), 4)
+        orders = [self.mol.nodes[first_node].get('hcount', 0), self.mol.nodes[second_node].get('hcount', 0), 4]
+        if self.mol.nodes[first_node].get('element', '*') == '*':
+            orders[0] = 4
+        if self.mol.nodes[second_node].get('element', '*') == '*':
+            orders[1] = 4
+        max_order = min(orders)
         order = data.draw(st.one_of(st.integers(min_value=0, max_value=max_order)), label='order')
         self.mol.add_edge(first_node, second_node, order=order)
         self.mol.nodes[first_node]['hcount'] -= order
         self.mol.nodes[second_node]['hcount'] -= order
 
+        # *-atoms could get negative hcounts.
+        for node in (first_node, second_node):
+            if self.mol.nodes[node]['hcount'] < 0:
+                self.mol.nodes[node]['hcount'] = 0
+
     @rule(data=st.data())
     def increment_edge_order(self, data):
+        candidates = self._get_bonding_nodes(self.mol)
         options = []
         for n1, n2 in self.mol.edges:
             order = self.mol.edges[(n1, n2)].get('order', 1)
-            if order < 4 and order != 1.5 and self.mol.nodes[n1].get('hcount') and self.mol.nodes[n2].get('hcount'):
+            if order < 4 and order != 1.5 and n1 in candidates and n2 in candidates:
                 options.append((n1, n2))
         if not options:
             return
@@ -82,6 +97,9 @@ class SMILESTest(RuleBasedStateMachine):
         self.mol.edges[edge]['order'] = self.mol.edges[edge].get('order', 1) + 1
         self.mol.nodes[edge[0]]['hcount'] -= 1
         self.mol.nodes[edge[1]]['hcount'] -= 1
+        for node in edge:
+            if self.mol.nodes[node]['hcount'] < 0:
+                self.mol.nodes[node]['hcount'] = 0
 
     @rule(data=st.data())
     def decrement_edge_order(self, data):
@@ -109,7 +127,7 @@ class SMILESTest(RuleBasedStateMachine):
 
     @rule(data=st.data())
     def change_charge(self, data):
-        candidates = [(idx, self.mol.nodes[idx]['hcount']) for idx in self.mol if self.mol.nodes[idx].get('hcount')]
+        candidates = [(idx, self.mol.nodes[idx]['hcount']) for idx in self._get_bonding_nodes(self.mol)]
         delta = st.fixed_dictionaries({}, optional={idx: st.integers(min_value=-hcount, max_value=hcount) for (idx, hcount) in candidates})
         delta = data.draw(delta, label='charge change')
         for idx, charge in delta.items():
