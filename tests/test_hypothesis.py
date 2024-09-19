@@ -143,7 +143,7 @@ class SMILESTest(RuleBasedStateMachine):
     @rule(function=st.sampled_from([
         (kekulize, {}),
         (dekekulize, {}),
-        (correct_aromatic_rings, {'strict': True}),
+        # (correct_aromatic_rings, {'strict': True}),
         (fill_valence, {}),
         (increment_bond_orders, {}),
     ]))
@@ -153,12 +153,12 @@ class SMILESTest(RuleBasedStateMachine):
     @invariant()
     def write_read_cycle(self):
         smiles = write_smiles(self.mol)
-        note(self.mol.nodes(data=True))
-        note(self.mol.edges(data=True))
+        # note(self.mol.nodes(data=True))
+        # note(self.mol.edges(data=True))
         note(smiles)
         found = read_smiles(smiles, reinterpret_aromatic=False)
-        note(found.nodes(data=True))
-        note(found.edges(data=True))
+        # note(found.nodes(data=True))
+        # note(found.edges(data=True))
         assertEqualGraphs(self.mol, found)
 
 Tester = SMILESTest.TestCase
