@@ -615,6 +615,22 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (8, 9, {'order': 1.5})],
         False
     ),
+    (
+        'C1=CC=C=C=C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),],
+        [(0, 1, {'order': 2}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (3, 4, {'order': 2}),
+         (4, 5, {'order': 2}),
+         (0, 5, {'order': 1})],
+        False
+    ),
     # chiral center S/L alanine
     (
         'C[C@@H](C(=O)O)N',

@@ -632,11 +632,17 @@ def dekekulize(mol):
     # The idea is the following:
     # 1) only nodes in cycles can be aromatic (in the sense that they show DIME)
     # 2) only nodes that have a double bond can be aromatic
+    # 3) only nodes that have at least 1 single bond can be aromatic
     # Given those two requirements, the aromatic system is spanned by the
     # maximal matching
     cycles = nx.cycle_basis(mol)
     cycles_nodes = {n for cycle in cycles for n in cycle}
-    double_bond_atoms = {n for edge in mol.edges for n in edge if mol.edges[edge].get('order', 1) == 2}
+    bond_orders = {}
+    for node in mol:
+        # We'll make a set because we don't care how often each order is present,
+        # and this way we can do an easy subset comparison
+        bond_orders[node] = {mol[node][n].get('order', 1) for n in mol[node]}
+    double_bond_atoms = {n for n in bond_orders if {1, 2}  <= bond_orders[n]}
     maybe_aromatic = double_bond_atoms & cycles_nodes
     matching = nx.max_weight_matching(mol.subgraph(maybe_aromatic))
     aromatic_nodes = {n for e in matching for n in e}
