@@ -505,19 +505,19 @@ def has_default_h_count(mol, node_idx, use_order=True):
 
 
 def _prune_nodes(nodes, mol):
-    new_nodes = []
+    new_nodes = set()
     for node in nodes:
         # all wild card nodes are eligible
         if mol.nodes[node].get('element', '*') == '*':
-            new_nodes.append(node)
+            new_nodes.add(node)
             continue
         missing = bonds_missing(mol, node, use_order=True)
         if missing > 0:
-            new_nodes.append(node)
-    return mol.subgraph(new_nodes)
+            new_nodes.add(node)
+    return new_nodes
 
 
-def mark_aromatic_atoms(mol, strict=True):
+def correct_aromatic_rings(mol, strict=True):
     """
     Aromaticity is defined here as regions that show delocalization induced
     molecular equivalence (DIME). In other words, regions where alternating
@@ -545,14 +545,16 @@ def mark_aromatic_atoms(mol, strict=True):
         If ``strict`` is True and the aromatic region of the molecule cannot
         be kekulized.
     """
+    # set the aromatic attribute to False for all nodes, and swap all aromatic
+    # bonds to single
+    arom_atoms = {node for node, aromatic in mol.nodes(data='aromatic') if aromatic}
+    nx.set_node_attributes(mol, False, 'aromatic')
+    for edge in mol.edges:
+        if mol.edges[edge].get('order') == 1.5:
+            mol.edges[edge]['order'] = 1
     # prune all nodes from molecule that are eligible and have
     # full valency
-    arom_atoms = [node for node, aromatic in mol.nodes(data='aromatic') if aromatic]
     ds_graph = _prune_nodes(arom_atoms, mol)
-
-    # set the aromatic attribute to False for all nodes
-    # as a precaution
-    nx.set_node_attributes(mol, False, 'aromatic')
 
     sub_ds_graph = mol.subgraph(ds_graph)
     max_match = nx.max_weight_matching(sub_ds_graph)
@@ -560,41 +562,21 @@ def mark_aromatic_atoms(mol, strict=True):
     # if it is perfect. if it is not perfect,
     # this graph originates from a completely invalid
     # smiles and we raise an error
-    if strict and not nx.is_perfect_matching(sub_ds_graph, max_match):
+    if not nx.is_perfect_matching(sub_ds_graph, max_match):
         msg = "Your molecule is invalid and cannot be kekulized."
-        raise SyntaxError(msg)
+        if strict:
+            raise SyntaxError(msg)
+        else:
+            LOGGER.warning(msg)
 
-    # From here we want to do 2 things: 1) dekekulize aromatic rings; and 2)
-    # kekulize "aromatic" fragments that are not in a cycle. We only consider
-    # nodes to be aromatic if they can participate in DIME, which means they
-    # must be in a cycle.
-    # 1) Dekekulize aromatic rings
-    # Add all double bonds to the perfect matching we have, and then for every
-    # simple cycle check if the resulting matching is still perfect. You need
-    # to take simple cycles (rather than the cycle basis), for cases like the
-    # following: Take Naphthalene, as entered by a madman: `c12ccccc1=CC=CC=2`
-    # with the following matching produced for the aromatic region:
-    # {(0, 1), (2, 3), (4, 5)}, which will result in non-perfect matchings for
-    # the cycle basis.
-    double_bonds = {e for e in mol.edges if mol.edges[e].get('order', 1) == 2}
-    extended_matching = max_match | double_bonds
-    cycles = list(nx.simple_cycles(mol))
-    for cycle in cycles:
-        is_perfect = nx.is_perfect_matching(mol.subgraph(cycle),
-                                            {e for e in extended_matching if
-                                             all(v in cycle for v in e)})
-        if extended_matching and is_perfect:
-            for node in cycle:
-                mol.nodes[node]['aromatic'] = True
-
-    # 2) Kekulize "aromatic" fragments that do not show DIME
-    nodes_in_cycles = {n for cycle in cycles for n in cycle}
-    for node in mol:
-        if node not in nodes_in_cycles:
-            mol.nodes[node]['aromatic'] = False
+    # First we kekulize everything, then we dekekulize the aromatic parts.
+    # Otherwise, c12ccccc1[nH]cc2 fails; you need to get rid of some nodes in
+    # odd-numbered cycles (the N in this example), otherwise you can end up with
+    # a suboptimal (but still maximal) matching
     for edge in max_match:
-        if not all(mol.nodes[v].get('aromatic', False) for v in edge):
-            mol.edges[edge]['order'] = 2
+        mol.edges[edge]['order'] = 2
+
+    dekekulize(mol)
 
 
 def kekulize(mol):
@@ -618,7 +600,7 @@ def kekulize(mol):
         If no alternating single and double bonds can be assigned to the
         aromatic region of ``mol``.
     """
-    arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic') and mol.nodes[n].get('element') in AROMATIC_ATOMS}
+    arom_nodes = {n for n in mol if mol.nodes[n].get('aromatic') and mol.nodes[n].get('element', '*') in AROMATIC_ATOMS}
     aromatic_mol = mol.subgraph(arom_nodes)
     matching = nx.max_weight_matching(aromatic_mol)
     if not nx.is_perfect_matching(aromatic_mol, matching):
@@ -647,64 +629,28 @@ def dekekulize(mol):
     None
         ``mol`` is modified in place.
     """
-    double_bonds = {e for e in mol.edges if mol.edges[e].get('order', 1) == 2}
-    cycles = nx.simple_cycles(mol)
+    # The idea is the following:
+    # 1) only nodes in cycles can be aromatic (in the sense that they show DIME)
+    # 2) only nodes that have a double bond can be aromatic
+    # Given those two requirements, the aromatic system is spanned by the
+    # maximal matching
+    cycles = nx.cycle_basis(mol)
+    cycles_nodes = {n for cycle in cycles for n in cycle}
+    double_bond_atoms = {n for edge in mol.edges for n in edge if mol.edges[edge].get('order', 1) == 2}
+    maybe_aromatic = double_bond_atoms & cycles_nodes
+    matching = nx.max_weight_matching(mol.subgraph(maybe_aromatic))
+    aromatic_nodes = {n for e in matching for n in e}
 
+    # The matching may extend into not fully aromatic cycles.
     for cycle in cycles:
-        if not all(mol.nodes[n].get('element') in AROMATIC_ATOMS for n in cycle):
-            continue
-        is_perfect = nx.is_perfect_matching(mol.subgraph(cycle),
-                                            {e for e in double_bonds if
-                                             all(v in cycle for v in e)})
-        if is_perfect:
+        if set(cycle) <= aromatic_nodes:
+            if not all(mol.nodes[n].get('element', '*') in AROMATIC_ATOMS for n in cycle):
+                continue
+            # Party!
             for node in cycle:
                 mol.nodes[node]['aromatic'] = True
-    mark_aromatic_edges(mol)
-
-
-def mark_aromatic_edges(mol):
-    """
-    Set all bonds between aromatic atoms (attribute 'aromatic' is `True`) to
-    1.5. Gives all other bonds that don't have an order yet an order of 1.
-
-    Parameters
-    ----------
-    mol : nx.Graph
-        The molecule.
-
-    Returns
-    -------
-    None
-        `mol` is modified in-place.
-    """
-    for edge in mol.edges:
-        if all(mol.nodes[node].get('aromatic', False) for node in edge):
-            mol.edges[edge]['order'] = 1.5
-        elif 'order' not in mol.edges[edge]:
-            mol.edges[edge]['order'] = 1
-
-
-def correct_aromatic_rings(mol, strict=True):
-    """
-    Sets hcount for all atoms, marks aromaticity for all atoms, and the order of
-    all aromatic bonds to 1.5.
-
-    Parameters
-    ----------
-    mol : nx.Graph
-        The molecule.
-    strict : bool
-        Passed to ``mark_aromatic_atoms``.
-
-    Returns
-    -------
-    None
-        `mol` is modified in-place.
-    """
-    nx.set_node_attributes(mol, True, 'aromatic')
-    fill_valence(mol)
-    mark_aromatic_atoms(mol, strict=strict)
-    mark_aromatic_edges(mol)
+            for edge in zip(cycle, cycle[1:] + [cycle[0]]):
+                mol.edges[edge]['order'] = 1.5
 
 
 def increment_bond_orders(molecule, max_bond_order=3):

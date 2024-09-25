@@ -840,3 +840,17 @@ def test_skip_kekulize(smiles):
     for node in g.nodes:
         assert g.nodes[node]['aromatic']
     assert g.edges[(0, 1)]['order'] == 1.5
+
+
+@pytest.mark.parametrize('smiles', (
+    'c1cc2ccc3c2c1cc3',
+    'c12cccc1c1cccc1cc2',
+    'c12c3c4c5c2c2c6c7c1c1c8c3c3c9c4c4c%10c5c5c2c2c6c6c%11c7c1c1c7c8c3c3c8c9c4c4c9c%10c5c5c2c2c6c6c%11c1c1c7c3c3c8c4c4c9c5c2c2c6c1c3c42',
+    'C1=CC2=CC=C3C2=C1C=C3',
+    'C1=C2C(=C3C=CC=C3C=C2)C=C1',
+    'C12=C3C4=C5C1=C1C6=C7C2=C2C8=C3C3=C9C4=C4C%10=C5C5=C1C1=C6C6=C%11C7=C2C2=C7C8=C3C3=C8C9=C4C4=C9C%10=C5C5=C1C1=C6C6=C%11C2=C2C7=C3C3=C8C4=C4C9=C5C1=C1C6=C2C3=C14',
+))
+def test_aromatic_molecules(smiles):
+    """These molecules are totally aromatic"""
+    mol = read_smiles(smiles, reinterpret_aromatic=True)
+    assert all(nx.get_node_attributes(mol, 'aromatic').values())

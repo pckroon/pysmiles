@@ -21,8 +21,8 @@ from hypothesis_networkx import graph_builder
 from pysmiles import read_smiles
 from pysmiles import write_smiles
 from pysmiles.smiles_helper import (
-    add_explicit_hydrogens, remove_explicit_hydrogens, mark_aromatic_atoms,
-    mark_aromatic_edges, fill_valence, correct_aromatic_rings,
+    add_explicit_hydrogens, remove_explicit_hydrogens, correct_aromatic_rings,
+    fill_valence,
     increment_bond_orders, kekulize, dekekulize)
 from pysmiles.testhelper import assertEqualGraphs
 

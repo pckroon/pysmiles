@@ -16,8 +16,8 @@
 import pytest
 
 from pysmiles.smiles_helper import (
-    correct_aromatic_rings, fill_valence, remove_explicit_hydrogens,
-    add_explicit_hydrogens, mark_aromatic_atoms, mark_aromatic_edges,
+    fill_valence, remove_explicit_hydrogens,
+    add_explicit_hydrogens, correct_aromatic_rings,
     valence, kekulize, dekekulize,
 )
 from pysmiles.testhelper import assertEqualGraphs, make_mol
@@ -230,7 +230,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     # 11
     (
-        mark_aromatic_atoms, {},
+        correct_aromatic_rings, {},
         [(0, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (1, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (2, {'element': 'C', 'hcount': 1, 'charge': 0}),
@@ -246,15 +246,15 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, {'element': 'C', 'hcount': 1, 'charge': 0, 'aromatic': True}),
          (3, {'element': 'C', 'hcount': 0, 'charge': 0, 'aromatic': True}),
          (4, {'element': 'C', 'hcount': 3, 'charge': 0, 'aromatic': False})],
-        [(0, 1, {'order': 2}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 2}),
-         (3, 0, {'order': 1}),
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 0, {'order': 1.5}),
          (3, 4, {'order': 1})],
     ),
     # 12
     (
-        mark_aromatic_atoms, {},
+        correct_aromatic_rings, {},
         [(0, {'element': 'C', 'hcount': 2, 'charge': 0}),
          (1, {'element': 'C', 'hcount': 2, 'charge': 0}),
          (2, {'element': 'C', 'hcount': 2, 'charge': 0}),
@@ -278,7 +278,7 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     # 13
     (
-        mark_aromatic_atoms, {},
+        correct_aromatic_rings, {},
         [(0, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (1, {'element': 'C', 'hcount': 1, 'charge': 0}),
          (2, {'element': 'C', 'hcount': 1, 'charge': 0}),
@@ -291,46 +291,14 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, {'element': 'C', 'hcount': 1, 'charge': 0, 'aromatic': True}),
          (2, {'element': 'C', 'hcount': 1, 'charge': 0, 'aromatic': True}),
          (3, {'hcount': 1, 'charge': 0, 'aromatic': True}),],
-        [(0, 1, {'order': 2}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 2}),
-         (3, 0, {'order': 1}),],
-    ),
-    # 14
-    (
-        mark_aromatic_edges, {},
-        [(0, {'charge': 1, 'aromatic': True}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),],
-        [(0, 1, {'order': 1}),
-         (1, 2, {'order': 1}),
-         (2, 0, {'order': 1}),],
-        [(0, {'charge': 1, 'aromatic': True}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),],
         [(0, 1, {'order': 1.5}),
          (1, 2, {'order': 1.5}),
-         (2, 0, {'order': 1.5}),],
-    ),
-    # 15
-    (
-        mark_aromatic_edges, {},
-        [(0, {'charge': 1, 'aromatic': True}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),],
-        [(0, 1, {'order': 1}),
-         (1, 2, {'order': 1}),],
-        [(0, {'charge': 1, 'aromatic': True}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),],
-        [(0, 1, {'order': 1.5}),
-         (1, 2, {'order': 1.5}),],
+         (2, 3, {'order': 1.5}),
+         (3, 0, {'order': 1.5}),],
     ),
     # 16
     (
-        # This case smells a bit. Not all atoms in a cycle are aromatic, so only
-        # some of the bonds become aromatic.
-        mark_aromatic_edges, {},
+        correct_aromatic_rings, {},
         [(0, {'charge': 1, 'aromatic': False}),
          (1, {'charge': 0, 'aromatic': True}),
          (2, {'charge': 0, 'aromatic': True}),],
@@ -338,31 +306,11 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, 2, {'order': 1}),
          (2, 0, {'order': 1}),],
         [(0, {'charge': 1, 'aromatic': False}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),],
+         (1, {'charge': 0, 'aromatic': False}),
+         (2, {'charge': 0, 'aromatic': False}),],
         [(0, 1, {'order': 1}),
-         (1, 2, {'order': 1.5}),
+         (1, 2, {'order': 2}),
          (2, 0, {'order': 1}),],
-    ),
-    # 17
-    (
-        mark_aromatic_edges, {},
-        [(0, {'charge': 1, 'aromatic': True}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),
-         (3, {'aromatic': False})],
-        [(0, 1, {'order': 1}),
-         (1, 2, {'order': 1}),
-         (2, 0, {'order': 1}),
-         (2, 3, {'order': 1})],
-        [(0, {'charge': 1, 'aromatic': True}),
-         (1, {'charge': 0, 'aromatic': True}),
-         (2, {'charge': 0, 'aromatic': True}),
-         (3, {'aromatic': False})],
-        [(0, 1, {'order': 1.5}),
-         (1, 2, {'order': 1.5}),
-         (2, 0, {'order': 1.5}),
-         (2, 3, {'order': 1})],
     ),
     # 18
     (
@@ -375,14 +323,14 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, 2, {}),
          (2, 3, {}),
          (3, 0, {})],
-        [(0, {'element': 'C', 'hcount': 2, 'aromatic': False}),
-         (1, {'element': 'C', 'hcount': 2, 'aromatic': False}),
-         (2, {'element': 'C', 'hcount': 2, 'aromatic': False}),
-         (3, {'element': 'C', 'hcount': 2, 'aromatic': False}),],
-        [(0, 1, {'order': 1}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 1}),
-         (3, 0, {'order': 1})],
+        [(0, {'element': 'C', 'aromatic': False}),
+         (1, {'element': 'C', 'aromatic': False}),
+         (2, {'element': 'C', 'aromatic': False}),
+         (3, {'element': 'C', 'aromatic': False}),],
+        [(0, 1, {}),
+         (1, 2, {}),
+         (2, 3, {}),
+         (3, 0, {})],
     ),
     # 19
     (
@@ -392,9 +340,28 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, {'element': 'C', 'hcount': 1}),
          (3, {'element': 'C', 'hcount': 1}),],
         [(0, 1, {}),
+         (1, 2, {'order': 2}),
+         (2, 3, {}),
+         (3, 0, {'order': 2}),],
+        [(0, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (2, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (3, {'element': 'C', 'hcount': 1, 'aromatic': True}),],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 0, {'order': 1.5})],
+    ),
+(
+        correct_aromatic_rings, {},
+        [(0, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (2, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (3, {'element': 'C', 'hcount': 1, 'aromatic': True}),],
+        [(0, 1, {}),
          (1, 2, {}),
          (2, 3, {}),
-         (3, 0, {})],
+         (3, 0, {}),],
         [(0, {'element': 'C', 'hcount': 1, 'aromatic': True}),
          (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
          (2, {'element': 'C', 'hcount': 1, 'aromatic': True}),
@@ -418,9 +385,9 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (2, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (3, {'element': 'C', 'hcount': 1, 'aromatic': False}),],
-        [(0, 1, {'order': 2}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 2}),],
+        [(0, 1, {}),
+         (1, 2, {}),
+         (2, 3, {}),],
     ),
     # 21
     (
@@ -440,11 +407,11 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (3, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (4, {'element': 'O', 'hcount': 0, 'aromatic': False}),],
-        [(0, 1, {'order': 2}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 2}),
-         (3, 4, {'order': 1}),
-         (4, 0, {'order': 1})],
+        [(0, 1, {}),
+         (1, 2, {}),
+         (2, 3, {}),
+         (3, 4, {}),
+         (4, 0, {})],
     ),
     (
         correct_aromatic_rings, {},
@@ -463,11 +430,11 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (3, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (4, {'element': 'N', 'hcount': 1, 'aromatic': False}),],
-        [(0, 1, {'order': 2}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 2}),
-         (3, 4, {'order': 1}),
-         (4, 0, {'order': 1}),],
+        [(0, 1, {}),
+         (1, 2, {}),
+         (2, 3, {}),
+         (3, 4, {}),
+         (4, 0, {}),],
     ),
     (
         correct_aromatic_rings, {},
@@ -487,17 +454,17 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (2, {'element': 'C', 'hcount': 1, 'aromatic': False}),
          (3, {'element': 'C', 'hcount': 1, 'aromatic': False}),
-         (4, {'element': 'N', 'hcount': 0, 'aromatic': False}),
+         (4, {'element': 'N', 'aromatic': False}),
          (5, {'element': 'H', 'aromatic': False})],
-        [(0, 1, {'order': 2}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 2}),
-         (3, 4, {'order': 1}),
-         (4, 0, {'order': 1}),
-         (4, 5, {'order': 1})],
+        [(0, 1, {}),
+         (1, 2, {}),
+         (2, 3, {}),
+         (3, 4, {}),
+         (4, 0, {}),
+         (4, 5, {})],
     ),
     (
-        mark_aromatic_atoms, {},
+        correct_aromatic_rings, {},
         [(0, {'element': 'C', 'hcount': 1, 'aromatic': True}),
          (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
          (2, {'element': 'C', 'hcount': 1, 'aromatic': True}),
@@ -510,10 +477,10 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
          (2, {'element': 'C', 'hcount': 1, 'aromatic': True}),
          (3, {'element': '*', 'hcount': 1, 'aromatic': True}),],
-        [(0, 1, {'order': 1}),
-         (1, 2, {'order': 1}),
-         (2, 3, {'order': 1}),
-         (0, 3, {'order': 1}),],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (0, 3, {'order': 1.5}),],
     ),
     (
         kekulize, {},
@@ -555,9 +522,14 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
 ))
 def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
+    print(f'{helper=} {kwargs=}')
+    print(f'{n_data_in=} {e_data_in=}')
+    print(f'{n_data_out=} {e_data_out=}')
     mol = make_mol(n_data_in, e_data_in)
     helper(mol, **kwargs)
     ref_mol = make_mol(n_data_out, e_data_out)
+    print(mol.nodes(data=True))
+    print(mol.edges(data=True))
     assertEqualGraphs(mol, ref_mol)
 
 
