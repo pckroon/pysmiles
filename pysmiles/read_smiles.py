@@ -237,15 +237,22 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     # a hcount, so all is well.
     fill_valence(mol)
 
-    if strict:
-        for node in mol:
-            element = mol.nodes[node].get('element', '*')
-            if element != '*' and element not in PTE:
-                raise KeyError(f'Unknown element {element}')
-            elif element != '*' and bonds_missing(mol, node):
-                debug_smiles = write_smiles_component(nx.ego_graph(mol, node))
-                raise KeyError(f'Node {node} ({format_atom(mol, node)}) has'
-                               f' non-standard valence: ...{debug_smiles}...')
+    for node in mol:
+        element = mol.nodes[node].get('element', '*')
+        if element != '*' and element not in PTE:
+            msg = f'Unknown element {element}'
+            if strict:
+                raise KeyError(msg)
+            else:
+                LOGGER.warning(msg)
+        elif element != '*' and bonds_missing(mol, node):
+            debug_smiles = write_smiles_component(nx.ego_graph(mol, node))
+            msg = (f'Node {node} ({format_atom(mol, node)}) has non-standard'
+                   f' valence: ...{debug_smiles}...')
+            if strict:
+                raise KeyError(msg)
+            else:
+                LOGGER.warning(msg)
 
     # post-processing of E/Z isomerism
     _annotate_ez_isomers(mol, ez_isomer_pairs)
