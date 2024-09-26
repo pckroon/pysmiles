@@ -766,6 +766,22 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, 3, {'order': 1}),],
         False,
     ),
+    (
+        'C1=CC=C[SiH]=C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (4, {'element': 'Si', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),],
+        [(0, 1, {'order': 2}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (3, 4, {'order': 1}),
+         (4, 5, {'order': 2}),
+         (5, 0, {'order': 1}),],
+        False
+    )
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     found = read_smiles(smiles, explicit_hydrogen=explicit_h)
@@ -785,6 +801,10 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('1CCC1', ValueError),
     ('ccc', SyntaxError),
     ('C=1CC-1', ValueError),
+    ('[Uoo]', KeyError),
+    ('F/C=CF', ValueError),
+    ('C=.C', ValueError),
+    ('C[O@]C', ValueError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
