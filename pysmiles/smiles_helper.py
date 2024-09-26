@@ -650,7 +650,15 @@ def dekekulize(mol):
     maybe_aromatic = double_bond_atoms & cycles_nodes
     matching = nx.max_weight_matching(submol.subgraph(maybe_aromatic))
     aromatic_nodes = {n for e in matching for n in e}
-
+    for cycle in cycles:
+        if set(cycle) <= aromatic_nodes:
+            # This cycle is completely aromatic, so carry on.
+            continue
+        # This cycle is not completely matched, so we should remove the
+        # contributing matched bonds.
+        for edge in list(matching):
+            if set(edge) <= set(cycle):
+                aromatic_nodes -= set(edge)
     # The matching may extend into not fully aromatic cycles.
     for cycle in cycles:
         if set(cycle) <= aromatic_nodes:
