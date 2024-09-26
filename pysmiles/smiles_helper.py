@@ -641,6 +641,7 @@ def dekekulize(mol):
     submol.remove_edges_from(e for e in submol.edges if submol.edges[e].get('order') == 0)
     cycles = nx.cycle_basis(submol)
     cycles_nodes = {n for cycle in cycles for n in cycle}
+    cycle_edges = set(frozenset(e) for cycle in cycles for e in zip(cycle, cycle[1:]+[cycle[0]]))
     bond_orders = {}
     for node in mol:
         # We'll make a set because we don't care how often each order is present,
@@ -649,16 +650,17 @@ def dekekulize(mol):
     double_bond_atoms = {n for n in bond_orders if {1, 2}  <= bond_orders[n]}
     maybe_aromatic = double_bond_atoms & cycles_nodes
     matching = nx.max_weight_matching(submol.subgraph(maybe_aromatic))
+    matching = set(map(frozenset, matching))
+    matching &= cycle_edges
     aromatic_nodes = {n for e in matching for n in e}
     for cycle in cycles:
-        if set(cycle) <= aromatic_nodes:
-            # This cycle is completely aromatic, so carry on.
-            continue
-        # This cycle is not completely matched, so we should remove the
-        # contributing matched bonds.
-        for edge in list(matching):
-            if set(edge) <= set(cycle):
-                aromatic_nodes -= set(edge)
+        if not set(cycle) <= aromatic_nodes:
+            # This cycle is not completely matched, so we should remove the
+            # contributing matched bonds.
+            for edge in matching:
+                if set(edge) <= set(cycle):
+                    aromatic_nodes -= set(edge)
+
     # The matching may extend into not fully aromatic cycles.
     for cycle in cycles:
         if set(cycle) <= aromatic_nodes:

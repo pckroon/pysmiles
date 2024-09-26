@@ -828,6 +828,31 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (3, 4, {'order': 1})],
         False
     ),
+    (
+        'C1=CC=CC1=C1C=CC=C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (7, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (8, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (9, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1})],
+        [(0, 1, {'order': 2}),
+         (0, 4, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (3, 4, {'order': 1}),
+         (4, 5, {'order': 2}),
+         (5, 6, {'order': 1}),
+         (5, 9, {'order': 1}),
+         (6, 7, {'order': 2}),
+         (7, 8, {'order': 1}),
+         (8, 9, {'order': 2})],
+        False
+    ),
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     found = read_smiles(smiles, explicit_hydrogen=explicit_h)
