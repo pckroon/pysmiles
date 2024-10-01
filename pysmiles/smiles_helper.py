@@ -616,6 +616,21 @@ def kekulize(mol):
         mol.nodes[edge[1]]['aromatic'] = False
 
 
+def _minimal_cycle_basis(graph, *args, **kwargs):
+    cycles = nx.minimum_cycle_basis(graph, *args, **kwargs)
+    for cycle in cycles:
+        ordered_cycle = [cycle[0]]
+        cycle = set(cycle[1:])
+        icycle = iter(cycle)
+        while cycle:
+            node = next(icycle)
+            if graph.has_edge(ordered_cycle[-1], node):
+                cycle.remove(node)
+                ordered_cycle.append(node)
+                icycle = iter(cycle)
+        yield ordered_cycle
+
+
 def dekekulize(mol):
     """
     Finds all cycles in ``mol`` that consist of alternating single and double
@@ -659,31 +674,30 @@ def dekekulize(mol):
     matching = set(map(frozenset, matching))
     aromatic_nodes = {n for e in matching for n in e}
     submol = submol.subgraph(aromatic_nodes)
-    aromatic_cycles = nx.cycle_basis(submol)
+    aromatic_cycles = list(_minimal_cycle_basis(submol))
     aromatic_nodes = {n for c in aromatic_cycles for n in c}
     aromatic_edges = {frozenset(frozenset(e) for e in zip(cycle, cycle[1:] + [cycle[0]])) for cycle in aromatic_cycles}
+    for cycle in aromatic_edges:
+        for edge in cycle:
+            mol.edges[edge]['order'] = 1
     # We need to get rid of triangles. Triangles in themselves can never be
     # aromatic, but they can still be part of aromatic cycles. We merge
     # triangles with fused cycles and remove the chord.
-    change = True
-    while change:
-        change = False
+    for triangle in set(aromatic_edges):
+        if len(triangle) != 3:
+            continue
         for cycle in set(aromatic_edges):
-            if len(cycle) == 3:
-                for cycle2 in set(aromatic_edges):
-                    if cycle == cycle2:
-                        continue
-                    chord = cycle & cycle2
-                    if len(chord) == 1:
-                        new_cycle = (cycle | cycle2) - chord
-                        aromatic_edges.add(new_cycle)
-                        aromatic_edges.remove(cycle2)
-                        change = True
-                    break
-                # This triangle does not overlap with anything, just remove
-                # it
+            if triangle == cycle:
+                continue
+            chord = triangle & cycle
+            if chord:
+                new_cycle = (triangle | cycle) - chord
+                aromatic_edges.add(new_cycle)
                 aromatic_edges.remove(cycle)
-                break  # ?
+                break
+        # This triangle does not overlap with anything, just remove
+        # it
+        aromatic_edges.remove(triangle)
 
     # if nx.is_perfect_matching(submol, matching):
     for node in aromatic_nodes:
