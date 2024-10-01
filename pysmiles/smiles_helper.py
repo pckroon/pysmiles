@@ -637,40 +637,60 @@ def dekekulize(mol):
     # 3) only nodes that have at least 1 single bond can be aromatic
     # Given those two requirements, the aromatic system is spanned by the
     # maximal matching
-    submol = mol.copy()
-    submol.remove_edges_from(e for e in submol.edges if submol.edges[e].get('order') == 0)
-    cycles = nx.cycle_basis(submol)
-    cycles_nodes = {n for cycle in cycles for n in cycle}
-    cycle_edges = set(frozenset(e) for cycle in cycles for e in zip(cycle, cycle[1:]+[cycle[0]]))
+
     bond_orders = {}
     for node in mol:
         # We'll make a set because we don't care how often each order is present,
         # and this way we can do an easy subset comparison
         bond_orders[node] = {mol[node][n].get('order', 1) for n in mol[node]}
     double_bond_atoms = {n for n in bond_orders if {1, 2}  <= bond_orders[n]}
-    maybe_aromatic = double_bond_atoms & cycles_nodes
-    matching = nx.max_weight_matching(submol.subgraph(maybe_aromatic))
-    matching = set(map(frozenset, matching))
-    matching &= cycle_edges
-    aromatic_nodes = {n for e in matching for n in e}
-    for cycle in cycles:
-        if not set(cycle) <= aromatic_nodes:
-            # This cycle is not completely matched, so we should remove the
-            # contributing matched bonds.
-            for edge in matching:
-                if set(edge) <= set(cycle):
-                    aromatic_nodes -= set(edge)
+    correct_element = {n for n in mol if mol.nodes[n].get('element', '*') in AROMATIC_ATOMS}
+    maybe_aromatic = double_bond_atoms & correct_element
+    submol = mol.subgraph(maybe_aromatic)
 
-    # The matching may extend into not fully aromatic cycles.
-    for cycle in cycles:
-        if set(cycle) <= aromatic_nodes:
-            if not all(mol.nodes[n].get('element', '*') in AROMATIC_ATOMS for n in cycle):
-                continue
-            # Party!
-            for node in cycle:
-                mol.nodes[node]['aromatic'] = True
-            for edge in zip(cycle, cycle[1:] + [cycle[0]]):
-                mol.edges[edge]['order'] = 1.5
+    cycles = nx.cycle_basis(submol)
+    cycle_edges = set(frozenset(e) for cycle in cycles for e in zip(cycle, cycle[1:]+[cycle[0]]))
+    zero_edges = set(frozenset(e) for e in mol.edges if mol.edges[e].get('order') == 0)
+    cycle_edges = cycle_edges - zero_edges
+    submol = submol.edge_subgraph({tuple(e) for e in cycle_edges})
+
+    # Maybe, matching is just the double bonds in submol?
+    matching = nx.max_weight_matching(submol, weight='order')
+    matching = set(map(frozenset, matching))
+    aromatic_nodes = {n for e in matching for n in e}
+    submol = submol.subgraph(aromatic_nodes)
+    aromatic_cycles = nx.cycle_basis(submol)
+    aromatic_nodes = {n for c in aromatic_cycles for n in c}
+    aromatic_edges = {frozenset(frozenset(e) for e in zip(cycle, cycle[1:] + [cycle[0]])) for cycle in aromatic_cycles}
+    # We need to get rid of triangles. Triangles in themselves can never be
+    # aromatic, but they can still be part of aromatic cycles. We merge
+    # triangles with fused cycles and remove the chord.
+    change = True
+    while change:
+        change = False
+        for cycle in set(aromatic_edges):
+            if len(cycle) == 3:
+                for cycle2 in set(aromatic_edges):
+                    if cycle == cycle2:
+                        continue
+                    chord = cycle & cycle2
+                    if len(chord) == 1:
+                        new_cycle = (cycle | cycle2) - chord
+                        aromatic_edges.add(new_cycle)
+                        aromatic_edges.remove(cycle2)
+                        change = True
+                    break
+                # This triangle does not overlap with anything, just remove
+                # it
+                aromatic_edges.remove(cycle)
+                break  # ?
+
+    # if nx.is_perfect_matching(submol, matching):
+    for node in aromatic_nodes:
+        mol.nodes[node]['aromatic'] = True
+    for cycle in aromatic_edges:
+        for edge in cycle:
+            mol.edges[edge]['order'] = 1.5
 
 
 def increment_bond_orders(molecule, max_bond_order=3):

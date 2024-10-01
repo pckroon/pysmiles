@@ -33,7 +33,7 @@ NODE_DATA = st.fixed_dictionaries({
     'isotope': st.one_of(st.none(), isotope),
     'class': st.one_of(st.none(), class_)
 }).map(lambda d: {k: v for k, v in d.items() if v is not None})
-FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-] *'.split())
+FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-] C(=O)O *'.split())
 
 @settings(max_examples=500, stateful_step_count=100, deadline=None)
 class SMILESTest(RuleBasedStateMachine):
@@ -143,7 +143,7 @@ class SMILESTest(RuleBasedStateMachine):
     @rule(function=st.sampled_from([
         (kekulize, {}),
         (dekekulize, {}),
-        # (correct_aromatic_rings, {'strict': True}),
+        (correct_aromatic_rings, {'strict': True}),
         (fill_valence, {}),
         (increment_bond_orders, {}),
     ]))
@@ -156,9 +156,11 @@ class SMILESTest(RuleBasedStateMachine):
         # note(self.mol.nodes(data=True))
         # note(self.mol.edges(data=True))
         note(smiles)
-        found = read_smiles(smiles, reinterpret_aromatic=False)
+        found = read_smiles(smiles, reinterpret_aromatic=True)
+        reference = self.mol.copy()
+        correct_aromatic_rings(reference)
         # note(found.nodes(data=True))
         # note(found.edges(data=True))
-        assertEqualGraphs(self.mol, found)
+        assertEqualGraphs(reference, found)
 
 Tester = SMILESTest.TestCase
