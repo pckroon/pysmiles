@@ -618,22 +618,38 @@ def kekulize(mol):
         mol.nodes[edge[1]]['aromatic'] = False
 
 
-def _minimal_cycle_basis(graph, *args, **kwargs):
-    cycles = nx.minimum_cycle_basis(graph, *args, **kwargs)
-    for cycle in cycles:
-        yield _reorder_cycle(graph, cycle)
-
 def _reorder_cycle(graph, nodes):
+    """
+    Find an order for `nodes` so that they form a cycle in `graph`.
+
+    Parameters
+    ----------
+    graph
+    nodes
+
+    Returns
+    -------
+    list
+        Ordered list of nodes, such that all(graph.has_edge(n1, n2) for (n1, n2) in zip(cycle, cycle[1:]+[cycle[0]]))
+
+    Raises
+    ------
+    nx.NetworkXNoCycle
+        The nodes do not form a cycle in `graph`.
+    """
     nodes = list(nodes)
     ordered_cycle = [nodes[0]]
     nodes = set(nodes[1:])
-    inodes = iter(nodes)
-    while nodes:
-        node = next(inodes)
-        if graph.has_edge(ordered_cycle[-1], node):
-            nodes.remove(node)
-            ordered_cycle.append(node)
-            inodes = iter(nodes)
+    while True:
+        for node in nodes:
+            if graph.has_edge(ordered_cycle[-1], node):
+                nodes.remove(node)
+                ordered_cycle.append(node)
+                break
+        else:  # tried all, no break
+            raise nx.NetworkXNoCycle('Not a cycle')
+        if not nodes:
+            break
     return ordered_cycle
 
 
@@ -705,21 +721,56 @@ def _hanser(graph, max_len=None):  # 36, 20s
 
 
 def _ring_is_aromatic(mol, nodes):
+    """
+    Returns true if the bonds with order 2 in the subgraph induced by nodes in
+    mol form a perfect matching of nodes.
+
+    Parameters
+    ----------
+    mol
+    nodes
+
+    Returns
+    -------
+    bool
+
+    """
     nodes = set(nodes)
     double_bonds = {frozenset(e) for e in mol.edges if mol.edges[e].get('order') == 2 and set(e) <= nodes}
     is_perfect = sorted(n for e in double_bonds for n in e) == sorted(nodes)
     return is_perfect
 
 
-def dekekulize(mol, threshold=35):
+def dekekulize(mol, estimation_threshold=30, max_ring_size=18):
     """
     Finds all cycles in ``mol`` that consist of alternating single and double
     bonds, and marks them as aromatic.
 
-    Arguments
+    In this case, an aromatic cycle is a cycle that can show delocalization
+    induced molecule equivalence (DIME): bond orders can be swapped without
+    introducing charges.
+    For each ring system - such as a naphthalene moiety - we consider 3 mutually
+    exclusive cases:
+    1) it's a simple ring, in which case we check if the single and double bonds
+    are alternating.
+    2) it contains less than `estimation_threshold` nodes, in which case we
+    enumerate all possible cycles smaller than `max_ring_size`. Since a molecule
+    can contain an exponential number of cycles this may take a while (for
+    example, buckminsterfullerene takes ~3 minutes to run).
+    3) otherwise we estimate the aromaticity by taking the cycles spanned by
+    the maximal matching as aromatic. This is mostly correct, but may
+    erroneously classify specific triangle edges as aromatic.
+
+    Parameters
     ---------
     mol : nx.Graph
         The molecule.
+    estimation_threshold : int
+        Aromaticity for ring systems that are larger than this threshold will be
+        estimated.
+    max_ring_size : int
+        Maximum ring size to consider for the exact case. 18 is the lowest
+        value for which buckminsterfullerene is still fully aromatic.
 
     Returns
     -------
@@ -734,7 +785,6 @@ def dekekulize(mol, threshold=35):
     submol = mol.subgraph(correct_element).copy()
     submol.remove_edges_from((e for e in mol.edges if mol.edges[e].get('order') == 0))
 
-
     # 1) biconnective components to split into ring systems. If simple (|V| == |E|) life is simple
     # 2) For complex ring systems:
     #   3) if too large: fast approximation, this may make too many edges aromatic
@@ -742,17 +792,13 @@ def dekekulize(mol, threshold=35):
     components = (submol.subgraph(nodes) for nodes in nx.biconnected_components(submol))
     for ring_system in components:
         is_simple = len(ring_system.nodes) == len(ring_system.edges)
-        if is_simple or len(ring_system) <= threshold:
-            if is_simple:
-                cycles = [_reorder_cycle(ring_system, ring_system)]
-            else:
-                cycles = _hanser(ring_system)
-            for cycle in cycles:
-                if _ring_is_aromatic(submol, cycle):
-                    for node in cycle:
-                        mol.nodes[node]['aromatic'] = True
-                    for edge in zip(cycle, cycle[1:]+[cycle[0]]):
-                        mol.edges[edge]['order'] = 1.5
+        all_aromatic = False
+        if is_simple and ring_system:
+            cycles = [_reorder_cycle(ring_system, ring_system)]
+        elif len(ring_system) <= estimation_threshold:
+            # 18 is the maximal cycle length needed to find all aromatic cycles
+            # in fullerene (in ~45 seconds).
+            cycles = _hanser(ring_system, max_ring_size)
         else:
             # approximate aromaticity
             # The idea is the following:
@@ -767,14 +813,17 @@ def dekekulize(mol, threshold=35):
                 # and this way we can do an easy subset comparison
                 bond_orders[node] = {mol[node][n].get('order', 1) for n in mol[node]}
             nodes_with_correct_bonds = {n for n in bond_orders if {1, 2} <= bond_orders[n]}
-            maybe_aromatic = nodes_with_correct_bonds #& correct_element
-            submol = submol.subgraph(maybe_aromatic)
+            submol = submol.subgraph(nodes_with_correct_bonds)
+            submol = submol.edge_subgraph((e for c in nx.cycle_basis(submol) for e in zip(c, c[1:]+[c[0]])))
             # Maybe, matching is just the double bonds in submol?
             matching = nx.max_weight_matching(submol, weight='order')
             aromatic_nodes = {n for e in matching for n in e}
             submol = submol.subgraph(aromatic_nodes)
             cycles = nx.cycle_basis(submol)
-            for idx, cycle in enumerate(cycles):
+            all_aromatic = True
+
+        for cycle in cycles:
+            if all_aromatic or _ring_is_aromatic(submol, cycle):
                 for node in cycle:
                     mol.nodes[node]['aromatic'] = True
                 for edge in zip(cycle, cycle[1:] + [cycle[0]]):
