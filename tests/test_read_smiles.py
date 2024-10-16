@@ -870,6 +870,39 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (3, 4, {'order': 1.5}),
          (4, 5, {'order': 1.5})],
         False
+    ),
+    (
+        '*1=Cc2ccc1cc2',
+        [(0, {'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (7, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1})],
+        [(0, 1, {'order': 1.5}),
+         (0, 5, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (2, 7, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 6, {'order': 1.5}),
+         (6, 7, {'order': 1.5})],
+        False
+    ),
+    (
+        '*1ccc1',
+        [(0, {'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (1, {'charge': 0, 'aromatic': True, 'element': 'C', 'hcount': 1}),
+         (2, {'charge': 0, 'aromatic': True, 'element': 'C', 'hcount': 1}),
+         (3, {'charge': 0, 'aromatic': True, 'element': 'C', 'hcount': 1}),],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (0, 3, {'order': 1.5}),],
+        False
     )
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
