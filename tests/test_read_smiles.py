@@ -1006,6 +1006,7 @@ def test_skip_kekulize(smiles):
     'C1=CC2=CC=C3C2=C1C=C3',
     'C1=C2C(=C3C=CC=C3C=C2)C=C1',
     'C12=C3C4=C5C1=C1C6=C7C2=C2C8=C3C3=C9C4=C4C%10=C5C5=C1C1=C6C6=C%11C7=C2C2=C7C8=C3C3=C8C9=C4C4=C9C%10=C5C5=C1C1=C6C6=C%11C2=C2C7=C3C3=C8C4=C4C9=C5C1=C1C6=C2C3=C14',
+    'C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91',
 ))
 def test_aromatic_molecules(smiles):
     """These molecules are totally aromatic"""
