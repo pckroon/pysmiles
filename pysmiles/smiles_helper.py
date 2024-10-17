@@ -638,16 +638,18 @@ def _reorder_cycle(graph, nodes):
         The nodes do not form a cycle in `graph`.
     """
     nodes = list(nodes)
+    if not nodes:
+        return nodes
     ordered_cycle = [nodes[0]]
     nodes = set(nodes[1:])
     while True:
-        for node in nodes:
-            if graph.has_edge(ordered_cycle[-1], node):
-                nodes.remove(node)
-                ordered_cycle.append(node)
-                break
-        else:  # tried all, no break
+        options = nodes & set(graph[ordered_cycle[-1]])
+        if not options:
             raise nx.NetworkXNoCycle('Not a cycle')
+        node = min(options, key=graph.degree)
+        nodes.remove(node)
+        ordered_cycle.append(node)
+
         if not nodes:
             break
     return ordered_cycle
