@@ -22,7 +22,6 @@ import logging
 import re
 import operator
 from itertools import product
-from sortedcontainers import SortedList
 
 import networkx as nx
 from . import PTE
@@ -680,7 +679,7 @@ def _hanser(graph, max_len=None):  # 36, 20s
     max_len = max_len or float('inf')
     path_graph = graph.copy()
     for edge in path_graph.edges:
-        path_graph.edges[edge]['paths'] = SortedList([[*edge]], key=len)
+        path_graph.edges[edge]['paths'] = [[*edge]]
     degrees = dict(path_graph.degree())  # 4186 cycles
     while path_graph.nodes:
         to_remove = min(path_graph, key=lambda n: degrees[n])
@@ -713,9 +712,9 @@ def _hanser(graph, max_len=None):  # 36, 20s
                         yield new_path[:-1]
                         continue
                     elif path_graph.has_edge(node_y, node_z):
-                        path_graph.edges[node_y, node_z]['paths'].add(new_path)
+                        path_graph.edges[node_y, node_z]['paths'].append(new_path)
                     else:
-                        path_graph.add_edge(node_y, node_z, paths=SortedList([new_path], key=len))
+                        path_graph.add_edge(node_y, node_z, paths=[new_path])
                     degrees[node_y] += 1
                     degrees[node_z] += 1
         path_graph.remove_node(to_remove)
