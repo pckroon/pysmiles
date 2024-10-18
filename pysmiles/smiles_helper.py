@@ -552,23 +552,41 @@ def correct_aromatic_rings(mol, strict=True, estimation_threshold=None, max_ring
     """
     # set the aromatic attribute to False for all nodes, and swap all aromatic
     # bonds to single
+    # We need to add wildcard atoms to arom_atoms, but that breaks further down...
     arom_atoms = {node for node, aromatic in mol.nodes(data='aromatic') if aromatic}
+    stars = {node for node in mol if mol.nodes[node].get('element', '*') == '*'}
     nx.set_node_attributes(mol, False, 'aromatic')
     for edge in mol.edges:
         if mol.edges[edge].get('order') == 1.5:
             mol.edges[edge]['order'] = 1
     # prune all nodes from molecule that are eligible and have
     # full valency
-    ds_graph = _prune_nodes(arom_atoms, mol)
+    ds_graph = _prune_nodes(arom_atoms|stars, mol)
 
     sub_ds_graph = mol.subgraph(ds_graph).copy()
     sub_ds_graph.remove_edges_from(e for e in sub_ds_graph.edges if sub_ds_graph.edges[e].get('order') == 0)
-    max_match = nx.max_weight_matching(sub_ds_graph)
+    for u, v in sub_ds_graph.edges:
+        if {u, v} & stars:
+            sub_ds_graph.edges[u, v]['w'] = 0.1
+    max_match = nx.max_weight_matching(sub_ds_graph, weight='w')
+    # ... it breaks here to be exact, since wildcard atoms /may/ be aromatic,
+    # the matching does not need to be perfect. Option: try to (somehow) have
+    # the matching avoid wildcards (where possible, and then for all atoms in
+    # arom_atoms that are not part of the matching, if they're wildcards, remove
+    # them from arom_atoms. But it gets harder: a) `c1**c1` is aromatic between the
+    # wildcards, but b) `c1**1` *IS NOT*. Molecule a needs aromatic bonds, but
+    # molecule b must not get a double bond between the wildcards.
+    # So... the smallest matching that perfectly matches at least the
+    # non-wildcards?
+    matched_nodes = {n for e in max_match for n in e}
+    unmatched_nodes = set(sub_ds_graph) - matched_nodes
+    unmatched_nodes -= stars
+
     # we check if a maximum matching exists and
     # if it is perfect. if it is not perfect,
     # this graph originates from a completely invalid
     # smiles and we raise an error
-    if max_match and not nx.is_perfect_matching(sub_ds_graph, max_match):
+    if max_match and unmatched_nodes:
         msg = "Your molecule is invalid and cannot be kekulized."
         if strict:
             raise SyntaxError(msg)
@@ -580,7 +598,8 @@ def correct_aromatic_rings(mol, strict=True, estimation_threshold=None, max_ring
     # odd-numbered cycles (the N in this example), otherwise you can end up with
     # a suboptimal (but still maximal) matching
     for edge in max_match:
-        mol.edges[edge]['order'] = 2
+        if not set(edge) <= stars:
+            mol.edges[edge]['order'] = 2
 
     dekekulize(mol, estimation_threshold=estimation_threshold, max_ring_size=max_ring_size)
 
