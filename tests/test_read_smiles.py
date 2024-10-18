@@ -1005,8 +1005,11 @@ def test_skip_kekulize(smiles):
     'c12c3c4c5c2c2c6c7c1c1c8c3c3c9c4c4c%10c5c5c2c2c6c6c%11c7c1c1c7c8c3c3c8c9c4c4c9c%10c5c5c2c2c6c6c%11c1c1c7c3c3c8c4c4c9c5c2c2c6c1c3c42',
     'C1=CC2=CC=C3C2=C1C=C3',
     'C1=C2C(=C3C=CC=C3C=C2)C=C1',
-    'C12=C3C4=C5C1=C1C6=C7C2=C2C8=C3C3=C9C4=C4C%10=C5C5=C1C1=C6C6=C%11C7=C2C2=C7C8=C3C3=C8C9=C4C4=C9C%10=C5C5=C1C1=C6C6=C%11C2=C2C7=C3C3=C8C4=C4C9=C5C1=C1C6=C2C3=C14',
-    'C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91',
+    'C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91',  # C20 fullerene, 0.03s
+    'c12c3c4c5c6c3c3c2c2c7c8c9c%10c(c4c1c%107)c1c5c4c6c5c3c2c8c2c5c4c1c29',  # C30 fullerene , 0.4s
+    'c12c3c4c5c6c7c4c4c2c2c8c1c1c3c5c3c5c1c1c8c8c9c%10c(c4c4c7c7c6c3c3c5c1c9c1c3c7c4c1%10)c82',  # C40 fullerene, 4s
+    'c12c3c4c5c6c3c3c7c1c1c8c9c%10c(c82)c4c2c5c4c5c6c6c8c%11c%12c%13c%14c%11c(c7c7c1c1c9c9c%11c%10c2c2c4c(c85)c%12c(c2%11)c%13c9c1c%147)c63',  # C50 fullerene, 40s
+    'C12=C3C4=C5C1=C1C6=C7C2=C2C8=C3C3=C9C4=C4C%10=C5C5=C1C1=C6C6=C%11C7=C2C2=C7C8=C3C3=C8C9=C4C4=C9C%10=C5C5=C1C1=C6C6=C%11C2=C2C7=C3C3=C8C4=C4C9=C5C1=C1C6=C2C3=C14',  # C60 fullerene
 ))
 def test_aromatic_molecules(smiles):
     """These molecules are totally aromatic"""
