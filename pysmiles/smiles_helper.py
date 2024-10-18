@@ -518,7 +518,7 @@ def _prune_nodes(nodes, mol):
     return new_nodes
 
 
-def correct_aromatic_rings(mol, strict=True):
+def correct_aromatic_rings(mol, strict=True, estimation_threshold=None, max_ring_size=None):
     """
     Aromaticity is defined here as regions that show delocalization induced
     molecular equivalence (DIME). In other words, regions where alternating
@@ -534,6 +534,10 @@ def correct_aromatic_rings(mol, strict=True):
     strict : bool
         Whether to raise a SyntaxError if the aromatic region of the molecule
         cannot be kekulized.
+    estimation_threshold : int, optional
+        See :func:`dekekulize`.
+    max_ring_size : int, optional
+        See :func:`dekekulize`.
 
     Returns
     -------
@@ -578,7 +582,7 @@ def correct_aromatic_rings(mol, strict=True):
     for edge in max_match:
         mol.edges[edge]['order'] = 2
 
-    dekekulize(mol)
+    dekekulize(mol, estimation_threshold=estimation_threshold, max_ring_size=max_ring_size)
 
 
 def kekulize(mol):
@@ -765,7 +769,7 @@ def _estimate_aromatic_cycles(mol):
     return cycles
 
 
-def dekekulize(mol, estimation_threshold=20, max_ring_size=18):
+def dekekulize(mol, estimation_threshold=30, max_ring_size=18):
     """
     Finds all cycles in ``mol`` that consist of alternating single and double
     bonds, and marks them as aromatic.
@@ -791,16 +795,18 @@ def dekekulize(mol, estimation_threshold=20, max_ring_size=18):
         The molecule.
     estimation_threshold : int
         Aromaticity for ring systems that are larger than this threshold will be
-        estimated.
+        estimated. C30 fullerene takes roughly 0.5 seconds to solve exactly.
     max_ring_size : int
         Maximum ring size to consider for the exact case. 18 is the lowest
-        value for which buckminsterfullerene is still fully aromatic.
+        value for which C60 fullerene is still fully aromatic.
 
     Returns
     -------
     None
         ``mol`` is modified in place.
     """
+    estimation_threshold = estimation_threshold if estimation_threshold is not None else 30
+    max_ring_size = max_ring_size if max_ring_size is not None else 18
     # Light reading for the next round:
     # https://pubmed.ncbi.nlm.nih.gov/22780427/
     # https://ringdecomposerlib.readthedocs.io/en/latest/
