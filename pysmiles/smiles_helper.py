@@ -677,73 +677,6 @@ def _reorder_cycle(graph, nodes):
     return ordered_cycle
 
 
-def _hanser(graph, max_len=None):  # 36, 20s
-    """
-    Finds all rings smaller than `max_len` in `graph` following Hanser's
-    algorithm [1] for ring perception
-
-    Parameters
-    ----------
-    graph : nx.Graph
-    max_len : int, optional
-        If given, only ring smaller than this are found.
-
-    Yields
-    ------
-    list
-        A list of nodes describing a cycle. A path exists along the nodes in the
-        list, and there exists an edge between the first and the last node.
-
-    References
-    ----------
-    [1] 10.1021/ci960322f
-    """
-    # 5467 cycles for fullerene
-    max_len = max_len or float('inf')
-    path_graph = graph.copy()
-    for edge in path_graph.edges:
-        path_graph.edges[edge]['paths'] = [[*edge]]
-    degrees = dict(path_graph.degree())  # 4186 cycles
-    while path_graph.nodes:
-        to_remove = min(path_graph, key=lambda n: degrees[n])
-        neighbours = list(path_graph[to_remove])
-        for idx in range(len(neighbours)):
-            node_y = neighbours[idx]
-            removed_paths = path_graph.edges[to_remove, node_y]['paths']
-            degrees[node_y] -= len(removed_paths)
-            for jdx in range(idx, len(neighbours)):
-                node_z = neighbours[jdx]
-
-                for key1, key2 in product(range(len(path_graph.edges[node_y, to_remove]['paths'])),
-                                          range(len(path_graph.edges[to_remove, node_z]['paths']))):
-                    if node_y == node_z and key2 <= key1:
-                        # We've already looked at this path, or it's just the one.
-                        continue
-                    p_yx = path_graph.edges[node_y, to_remove]['paths'][key1]
-                    p_xz = path_graph.edges[to_remove, node_z]['paths'][key2]
-                    # -2, because we include the end points of the path
-                    if len(p_yx) + len(p_xz) - 2 > max_len or not set(p_yx[1:-1]).isdisjoint(p_xz[1:-1]):
-                        continue
-                    # Flip paths to make sure they start and end at the right place.
-                    # If path_graph were a DiGraph this wouldn't be necessary...
-                    if p_yx[0] == to_remove:
-                        p_yx = p_yx[::-1]
-                    if p_xz[-1] == to_remove:
-                        p_xz = p_xz[::-1]
-                    new_path = p_yx[:-1] + p_xz
-                    if node_y == node_z:
-                        yield new_path[:-1]
-                        continue
-                    elif path_graph.has_edge(node_y, node_z):
-                        path_graph.edges[node_y, node_z]['paths'].append(new_path)
-                    else:
-                        path_graph.add_edge(node_y, node_z, paths=[new_path])
-                    degrees[node_y] += 1
-                    degrees[node_z] += 1
-        path_graph.remove_node(to_remove)
-        del degrees[to_remove]
-
-
 def _ring_is_aromatic(mol, nodes):
     """
     Returns true if the bonds with order 2 in the subgraph induced by nodes in
@@ -757,7 +690,6 @@ def _ring_is_aromatic(mol, nodes):
     Returns
     -------
     bool
-
     """
     nodes = set(nodes)
     double_bonds = {frozenset(e) for e in mol.edges if mol.edges[e].get('order') == 2 and set(e) <= nodes}
@@ -848,7 +780,7 @@ def dekekulize(mol, estimation_threshold=None, max_ring_size=None):
             # 18 is the maximal cycle length needed to find all aromatic cycles
             # in fullerene.
             approx_arom = _estimate_aromatic_cycles(ring_system)
-            cycles = _hanser(ring_system, max_ring_size)
+            cycles = nx.simple_cycles(ring_system, length_bound=max_ring_size)
         else:
             # approximate aromaticity
             cycles = _estimate_aromatic_cycles(ring_system)
