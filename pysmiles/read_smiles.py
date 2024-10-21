@@ -24,8 +24,8 @@ import networkx as nx
 
 from . import PTE
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
-                            parse_atom, fill_valence, mark_aromatic_edges,
-                            mark_aromatic_atoms,  bonds_missing, format_atom,
+                            parse_atom, fill_valence, bonds_missing, format_atom,
+                            correct_aromatic_rings,
                             _mark_chiral_atoms, _annotate_ez_isomers)
 from .write_smiles import write_smiles_component
 
@@ -134,6 +134,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     anchor = None
     idx = 0
     default_bond = 1
+    default_aromatic_bond = 1.5
     next_bond = None
     branches = []
     ring_nums = {}
@@ -146,7 +147,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
             mol.add_node(idx, **parse_atom(token))
             if anchor is not None:
                 if next_bond is None:
-                    next_bond = default_bond
+                    if mol.nodes[anchor].get('aromatic') and mol.nodes[idx].get('aromatic'):
+                        next_bond = default_aromatic_bond
+                    else:
+                        next_bond = default_bond
                 if next_bond or zero_order_bonds:
                     mol.add_edge(anchor, idx, order=next_bond)
                 next_bond = None
@@ -165,7 +169,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
             if token in ring_nums:
                 jdx, order = ring_nums[token]
                 if next_bond is None and order is None:
-                    next_bond = default_bond
+                    if mol.nodes[idx-1].get('aromatic') and mol.nodes[jdx].get('aromatic'):
+                        next_bond = default_aromatic_bond
+                    else:
+                        next_bond = default_bond
                 elif order is None:  # Note that the check is needed,
                     next_bond = next_bond  # But this could be pass.
                 elif next_bond is None:
@@ -223,25 +230,29 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         raise ValueError('There is an unmatched stereochemical token.')
 
     if reinterpret_aromatic:
-        mark_aromatic_atoms(mol, strict=strict)
-        mark_aromatic_edges(mol)
-    else:
-        mark_aromatic_edges(mol)
+        correct_aromatic_rings(mol, strict=strict)
 
     # This is a bit of an overreach, we should only add implicit hydrogens to
     # atoms in the organic subset. However, all non-organic atoms already have
     # a hcount, so all is well.
     fill_valence(mol)
 
-    if strict:
-        for node in mol:
-            element = mol.nodes[node].get('element', '*')
-            if element != '*' and element not in PTE:
-                raise KeyError(f'Unknown element {element}')
-            elif element != '*' and bonds_missing(mol, node):
-                debug_smiles = write_smiles_component(nx.ego_graph(mol, node))
-                raise KeyError(f'Node {node} ({format_atom(mol, node)}) has'
-                               f' non-standard valence: ...{debug_smiles}...')
+    for node in mol:
+        element = mol.nodes[node].get('element', '*')
+        if element != '*' and element not in PTE:
+            msg = f'Unknown element {element}'
+            if strict:
+                raise KeyError(msg)
+            else:
+                LOGGER.warning(msg)
+        elif element != '*' and bonds_missing(mol, node):
+            debug_smiles = write_smiles_component(nx.ego_graph(mol, node))
+            msg = (f'Node {node} ({format_atom(mol, node)}) has non-standard'
+                   f' valence: ...{debug_smiles}...')
+            if strict:
+                raise KeyError(msg)
+            else:
+                LOGGER.warning(msg)
 
     # post-processing of E/Z isomerism
     _annotate_ez_isomers(mol, ez_isomer_pairs)

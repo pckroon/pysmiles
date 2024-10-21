@@ -14,133 +14,153 @@
 # limitations under the License.
 from hypothesis import strategies as st
 from hypothesis.stateful import (RuleBasedStateMachine, rule, invariant,
-                                 initialize, precondition)
-from hypothesis import note, settings, assume, HealthCheck
-from hypothesis_networkx import graph_builder
+                                 initialize)
+from hypothesis import note, settings, assume
+
+import networkx as nx
 
 from pysmiles import read_smiles
 from pysmiles import write_smiles
 from pysmiles.smiles_helper import (
-    add_explicit_hydrogens, remove_explicit_hydrogens, mark_aromatic_atoms,
-    mark_aromatic_edges, fill_valence, correct_aromatic_rings,
-    increment_bond_orders, kekulize, dekekulize)
+    add_explicit_hydrogens, remove_explicit_hydrogens, fill_valence,
+    correct_aromatic_rings, increment_bond_orders, kekulize, dekekulize)
 from pysmiles.testhelper import assertEqualGraphs
 
-
-def no_none_value(mapping):
-    return {k: v for k, v in mapping.items() if v is not None}
-
-
-def no_hydrogen_hcount(mapping):
-    if mapping.get('element') == 'H' and 'hcount' in mapping:
-        mapping['hcount'] = 0
-    return mapping
-
-
-def valid_hydrogen_count(mol):
-    for node in mol.nodes:
-        H_neighbors = sum(1 for neighbor in mol[node] if mol.nodes[neighbor].get('element') == 'H')
-        hcount = mol.nodes[node].get('hcount', 0)
-        if H_neighbors + hcount > 9:
-            mol.nodes[node]['hcount'] = hcount + H_neighbors - 9
-
-
 isotope = st.integers(min_value=1)
-element = st.sampled_from('C N O S P H'.split())
-hcount = st.integers(min_value=0, max_value=9)
-charge = st.integers(min_value=-20, max_value=20)
 class_ = st.integers(min_value=1)
 
-node_data = st.fixed_dictionaries({
+NODE_DATA = st.fixed_dictionaries({
     'isotope': st.one_of(st.none(), isotope),
-    'hcount': st.one_of(st.none(), hcount),
-    'element': st.one_of(element, st.none()),
-    'charge': charge,  # Charge can not be none for comparison reasons
-    'aromatic': st.just(False),
     'class': st.one_of(st.none(), class_)
-}).map(no_none_value).map(no_hydrogen_hcount)
-order = st.sampled_from([1, 2, 3, 0, 4, 1.5])
-edge_data = st.fixed_dictionaries({'order': order})
+}).map(lambda d: {k: v for k, v in d.items() if v is not None})
+FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-] C(=O)O *'.split())
 
-
-arom_triangle = read_smiles('[*]1[*][*]1')
-for edge in arom_triangle.edges:
-    arom_triangle.edges[edge]['order'] = 1
-
-
-@settings(max_examples=100, stateful_step_count=20, deadline=None)
+@settings(max_examples=500, stateful_step_count=100, deadline=None)
 class SMILESTest(RuleBasedStateMachine):
-    @initialize(mol=graph_builder(node_data=node_data, edge_data=edge_data, min_nodes=1, max_nodes=7))
-    def setup(self, mol):
-        valid_hydrogen_count(mol)
-        self.mol = mol
-        try:
-            # Ensure at least the first generated molecule is valid.
-            self.write_read_cycle()
-        except AssertionError:
-            raise
-        except:
-            assume(False)
-
+    @initialize(fragment=FRAGMENTS)
+    def setup(self, fragment):
+        self.mol = read_smiles(fragment)
         note(self.mol.nodes(data=True))
-        note(self.mol.edges(data=True))
 
-    @rule()
-    def add_explicit_hydrogens(self):
-        add_explicit_hydrogens(self.mol)
+    @staticmethod
+    def _get_bonding_nodes(mol):
+        return set(n for n in mol if mol.nodes[n].get('hcount') or mol.nodes[n].get('element', '*') == '*')
 
-    @rule()
-    def remove_explicit_hydrogens(self):
-        remove_explicit_hydrogens(self.mol)
+    @rule(data=st.data())
+    def add_edge(self, data):
+        nodes_with_hydrogen = self._get_bonding_nodes(self.mol)
+        assume(nodes_with_hydrogen)
+        first_node = data.draw(st.sampled_from(sorted(nodes_with_hydrogen)), label='first_node')
+        possibles = sorted(nodes_with_hydrogen - {first_node} - set(self.mol[first_node]))
+        if possibles:
+            second_node = data.draw(st.one_of(st.sampled_from(possibles), st.none()), label='second_node')
+        else:
+            second_node = None
+        if second_node is None:
+            # Make a new fragment, and merge the two.
+            new_fragment = data.draw(FRAGMENTS, label='new_fragment')
+            new_fragment = read_smiles(new_fragment)
+            mapping = dict(zip(range(len(new_fragment)), range(len(self.mol), len(self.mol)+len(new_fragment))))
+            nx.relabel_nodes(new_fragment, mapping, copy=False)
+            # need to have at least one hydrogen or * to add an edge.
+            candidates = self._get_bonding_nodes(new_fragment)
+            assume(candidates)
+            second_node = data.draw(st.sampled_from(sorted(candidates)), label='second_node')
+            self.mol.update(new_fragment)
+        orders = [self.mol.nodes[first_node].get('hcount', 0), self.mol.nodes[second_node].get('hcount', 0), 4]
+        if self.mol.nodes[first_node].get('element', '*') == '*':
+            orders[0] = 4
+        if self.mol.nodes[second_node].get('element', '*') == '*':
+            orders[1] = 4
+        max_order = min(orders)
+        order = data.draw(st.one_of(st.integers(min_value=0, max_value=max_order)), label='order')
+        self.mol.add_edge(first_node, second_node, order=order)
+        self.mol.nodes[first_node]['hcount'] -= order
+        self.mol.nodes[second_node]['hcount'] -= order
 
-    @rule()
-    def kekulize(self):
-        kekulize(self.mol)
+        # *-atoms could get negative hcounts.
+        for node in (first_node, second_node):
+            if self.mol.nodes[node]['hcount'] < 0:
+                self.mol.nodes[node]['hcount'] = 0
 
-    def dekekulize(self):
-        dekekulize(self.mol)
+    @rule(data=st.data())
+    def increment_edge_order(self, data):
+        candidates = self._get_bonding_nodes(self.mol)
+        options = []
+        for n1, n2 in self.mol.edges:
+            order = self.mol.edges[(n1, n2)].get('order', 1)
+            if order < 4 and order != 1.5 and n1 in candidates and n2 in candidates:
+                options.append((n1, n2))
+        if not options:
+            return
+        edge = data.draw(st.sampled_from(options), label='edge')
+        self.mol.edges[edge]['order'] = self.mol.edges[edge].get('order', 1) + 1
+        self.mol.nodes[edge[0]]['hcount'] -= 1
+        self.mol.nodes[edge[1]]['hcount'] -= 1
+        for node in edge:
+            if self.mol.nodes[node]['hcount'] < 0:
+                self.mol.nodes[node]['hcount'] = 0
 
-    # We can't run this halfway through, because aromaticity does not always get
-    # encoded in the SMILES string. In particular when * elements are involved.
-    # @rule()
-    # def correct_aromatic_rings(self):
-    #     correct_aromatic_rings(self.mol, strict=False)
+    @rule(data=st.data())
+    def decrement_edge_order(self, data):
+        options = []
+        for edge in self.mol.edges:
+            order = self.mol.edges[edge].get('order', 1)
+            if order >= 1 and order != 1.5:  # 0-order is allowed, because why not.
+                options.append(edge)
+        if not options:
+            return
+        edge = data.draw(st.sampled_from(options), label='edge')
+        self.mol.edges[edge]['order'] = self.mol.edges[edge].get('order', 1) - 1
+        self.mol.nodes[edge[0]]['hcount'] += 1
+        self.mol.nodes[edge[1]]['hcount'] += 1
 
-    @rule()
-    def fill_valence(self):
+    @rule(data=st.data())
+    def decorate_node(self, data):
+        node_data = st.dictionaries(
+            keys=st.sampled_from(list(self.mol.nodes)),
+            values=NODE_DATA
+        )
+        node_data = data.draw(node_data, label='node_data')
+        for idx, attrs in node_data.items():
+            self.mol.nodes[idx].update(attrs)
+
+    @rule(data=st.data())
+    def change_charge(self, data):
+        candidates = [(idx, self.mol.nodes[idx]['hcount']) for idx in self._get_bonding_nodes(self.mol)]
+        delta = st.fixed_dictionaries({}, optional={idx: st.integers(min_value=-hcount, max_value=hcount) for (idx, hcount) in candidates})
+        delta = data.draw(delta, label='charge change')
+        for idx, charge in delta.items():
+            self.mol.nodes[idx]['charge'] += charge
+            del self.mol.nodes[idx]['hcount']
         fill_valence(self.mol)
 
     @rule()
-    def increment_bond_orders(self):
-        increment_bond_orders(self.mol)
+    def cycle_explicit_hydrogens(self):
+        add_explicit_hydrogens(self.mol)
+        remove_explicit_hydrogens(self.mol)
+
+    @rule(function=st.sampled_from([
+        (kekulize, {}),
+        (dekekulize, {}),
+        (correct_aromatic_rings, {'strict': True}),
+        (fill_valence, {}),
+        (increment_bond_orders, {}),
+    ]))
+    def helper(self, function):
+        function[0](self.mol, **function[1])
 
     @invariant()
     def write_read_cycle(self):
         smiles = write_smiles(self.mol)
-        note(self.mol.nodes(data=True))
-        note(self.mol.edges(data=True))
+        # note(self.mol.nodes(data=True))
+        # note(self.mol.edges(data=True))
         note(smiles)
+        found = read_smiles(smiles, reinterpret_aromatic=True)
+        reference = self.mol.copy()
+        correct_aromatic_rings(reference)
+        # note(found.nodes(data=True))
+        # note(found.edges(data=True))
+        assertEqualGraphs(reference, found)
 
-        # self.mol can exist in a mixed implicit/explicit H style. The reference
-        # must be one or the other, since we can't read in mixed mode. We want
-        # to be sure we produce the correct answer in both cases though.
-        for expl_H in (False, True):
-            ref_mol = self.mol.copy()
-            defaults = {'charge': 0, 'hcount': 0}
-            for node in ref_mol:
-                for key, val in defaults.items():
-                    if key not in ref_mol.nodes[node]:
-                        ref_mol.nodes[node][key] = val
-            if expl_H:
-                add_explicit_hydrogens(ref_mol)
-            else:
-                remove_explicit_hydrogens(ref_mol)
-            found = read_smiles(smiles, explicit_hydrogen=expl_H,
-                                reinterpret_aromatic=False)
-            note(found.nodes(data=True))
-            note(found.edges(data=True))
-            assertEqualGraphs(ref_mol, found)
-
-
-SMILESTest.TestCase.settings = settings(max_examples=500, stateful_step_count=10, deadline=None, suppress_health_check=[HealthCheck.filter_too_much])
 Tester = SMILESTest.TestCase

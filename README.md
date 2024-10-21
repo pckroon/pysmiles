@@ -23,13 +23,12 @@ the graph, and bonds are the edges. Nodes can have the following attributes:
     Defaults to 0.
 - charge: int. The charge of this atom. Defaults to 0.
 - class: int. The "class" of this atom. Defaults to 0.
+- rs_isomer and ez_isomer: See below.
+- stereo: Not yet used, but reserved for more interpretable stereochemical 
+  information
 
 Edges have the following attributes:
 - order: Number. The bond order. 1.5 is used for aromatic bonds. Defaults to 1.
-
-There is currently no way of specifying stereo chemical information, and this
-is discarded upon reading. Somewhere in the future this will probably be
-stored in the "stereo" attribute of nodes.
 
 ## Reading SMILES
 The function `read_smiles(smiles, explicit_hydrogen=False,
@@ -55,7 +54,8 @@ element attribute.
     information in the SMILES string.
 - `strict` determines whether the function be a bit more critical about what 
     constitutes a valid SMILES string. In particular, checks whether the 
-    specified aromatic fragments can be kekulized. 
+    specified aromatic fragments can be kekulized, and whether atom valency 
+    is sensible. 
 
 ### Stereochemical information
 Tetrahedral chirality is stored on nodes in the 'rs_isomer' attribute. It 
@@ -78,6 +78,35 @@ example, when parsing the SMILES `Br/C=C\F` node 0 (the bromine) will have
 the axes (0, 1) and (2, 3) around the central axis (1, 2) is 0 degrees. 
 There is currently no way to easily convert this to E/Z labels.
 
+### Aromaticity
+Aromaticity in SMILES has little to do with how an organic chemist might 
+interpret the term. Here we use "aromatic" to mean "delocalization induced 
+molecular equivalence" (DIME). DIME means that molecular fragments that are 
+equivalent under delocalization should get the same representation. As an 
+example, `C1=CC=CC=C1` and `C=1C=CC=CC1` are equivalent, and should both be 
+represented as `c1ccccc1`. On the other hand, pyrolle (`c1c[nH]cc1`) can only
+be represented as `C1=CNC=C1`, and is not considered aromatic. A series of 
+blogposts with a decent writeup on the subject can be found [here][depth_first].
+
+Despite how simple it seems at a glance, here be dragons lurking in the details.
+The main problem is that in order to determine whether an edge is aromatic, 
+you need to generate *all* simple cycles. To illustrate why this is a problem,
+let's look at buckminsterfullerene: it contains a staggering *15,024,073* 
+cycles! It's really not feasible to investigate all of those separately.
+
+Therefor we approximate the aromaticity for ring systems that are too large. By
+default we consider 30 atoms large. For the exact algorithm, please see the
+docstring of `dekekulize`. The approximation usually works fine, but may 
+erroneously mark some triangle edges as aromatic. If you have a SMILES 
+string with a large ring system for which the approximation does not work, 
+please open an issue. As a workaround, you can read the SMILES with 
+`reinterpret_aromatic=False`, and manually call `correct_aromatic_rings` 
+with more appropriate thresholds.
+
+A second complication comes from wildcard (\*) atoms. If possible we try to 
+kekulize the provided molecule without using them, but there may be edge 
+cases where this does not work as intended.
+
 ## Writing SMILES
 The function `write_smiles(molecule, default_element='*', start=None)` can be
 used to write SMILES strings from a molecule. The function does *not* check 
@@ -98,8 +127,7 @@ can help in creating chemically relevant molecules with minimal work.
 - `fill_valence(mol, respect_hcount=True, respect_bond_order=True,
                  max_bond_order=3)`
     This function will fill the valence of all atoms in your molecule by 
-    incrementing the 'hcount' and, if specified, bond orders. Note that it does
-    not use 'charge' attribute to find the correct valence.
+    incrementing the 'hcount' and, if specified, bond orders.
     - `repect_hcount`: bool. Whether existing hcounts can be overwritten.
     - `respect_bond_order`: bool. Whether bond orders can be changed.
     - `max_bond_order`: int. The maximum bond order that will be set.
@@ -109,32 +137,24 @@ can help in creating chemically relevant molecules with minimal work.
 - `remove_explicit_hydrogens(mol)`
     This function does the inverse of `add_explicit_hydrogens`: it will remove
     explicit hydrogen nodes and add them to the relevant 'hcount' attributes.
-- `correct_aromatic_rings(mol, strict=True)`
+- `correct_aromatic_rings(mol, strict=True, estimation_threshold=None,
+                          max_ring_size=None)`
     This function marks all (anti)-aromatic atoms in your molecule, and sets 
     all bonds between (anti)-aromatic atoms to order 1.5.
 
-    It fills the valence of all atoms (see also `fill_valence`) before trying
-    to figure our which atoms are aromatic. It works by first finding all 
-    atoms that could participate in an aromatic system. These are atoms that 
-    can make a double bond without introducing a charge. Since this function 
-    calls `fill_valence` these will always be atoms that already have either
-    aromatic or double bonds. Then, it tries to assign alternating double 
-    and single bonds between the atoms found. If it cannot and `strict` is 
-    `True` an error will be raised. Otherwise, it starts to look for cycles 
-    that consist of such alternating double and single bonds. Atoms in these
-    cycles will be marked as aromatic, and these edges will get a bond order 
-    of 1.5. The relevant atoms that are not in any cycle will be marked as 
-    not-aromatic, and these bonds will be assigned alternating bond orders of 
-    1 and 2. 
-
-    The consequence is that *only* fragments that show delocalization
-    induced molecular equivalence (DIME) will be marked as 'aromatic'. For 
-    example, benzene (`c1ccccc1`) will be aromatic, but pyrrole (`c1c[nH]cc1`)
-    will not, and will be converted to `C1=CNC=C1`.
+    It works by first finding all atoms that could participate in an aromatic
+    system. These are atoms that can make a double bond without introducing 
+    a charge. Then, it tries to assign alternating double and single bonds  
+    between the atoms found. If it cannot and `strict` is `True` an error 
+    will be raised. Otherwise, it starts to look for cycles that consist of 
+    such alternating double and single bonds. Atoms in these cycles will be 
+    marked as aromatic, and these edges will get a bond order of 1.5. The 
+    relevant atoms that are not in any cycle will be marked as not-aromatic, 
+    and these bonds will be assigned alternating bond orders of 1 and 2.
 - `kekulize(mol)`
     Assigns alternating single and double bonds to all aromatic regions in
     ``mol``. Will raise an error if it cannot.
-- `dekekulize(mol)`
+- `dekekulize(mol, estimation_threshold=None, max_ring_size=None)`
     Finds all cycles in `mol` that consist of alternating single and double
     bonds, and marks them as aromatic.
 
@@ -246,10 +266,10 @@ logging.getLogger('pysmiles').setLevel(logging.CRITICAL)  # Anything higher than
     exact representation of that graph. Because of this, the SMILES string
     will be invalid though.
 - The writer cannot deal with stereochemistry, and ignores it.
-- There is no way to easily transform stereochemical information to human 
-  readable labels like R/S/E/Z.
+- There is no way to easily transform stereochemical information to 
+  human-readable labels like R/S/E/Z.
 - Extended stereochemical centers, such as described by `NC(Br)=[C@]=C(O)C` 
-  are not yet supported.
+    are not supported.
 - Although the SMILES `F/C(/Br)=C\F` is valid, pysmiles does not understand it.
 - It only processes SMILES. This might later be extended to e.g. InChi, SLN,
     SMARTS, etc.
@@ -290,3 +310,4 @@ PySmiles is distributed under the Apache 2.0 license.
 
 [opensmiles]: http://opensmiles.org/
 [networkx]: https://networkx.github.io/
+[depth_first]: https://depth-first.com/articles/2020/02/10/a-comprehensive-treatment-of-aromaticity-in-the-smiles-language/

@@ -49,31 +49,34 @@ def assertEqualGraphs(graph1, graph2):  # pylint: disable=invalid-name
     for m_idx, match in enumerate(matches):
         score = 0
         for node_idx, node_jdx in match.items():
-            if graph1.nodes[node_idx] == graph2.nodes[node_jdx]:
-                score += 1
+            node1 = graph1.nodes[node_idx]
+            node2 = graph2.nodes[node_idx]
+            for attr in set(node1) | set(node2):
+                if node1.get(attr) == node2.get(attr):
+                    score += 1
+
         for idx1, jdx1 in graph1.edges:
             idx2, jdx2 = match[idx1], match[jdx1]
             edge1 = graph1.edges[idx1, jdx1]
             edge2 = graph2.edges[idx2, jdx2]
-            if edge1 == edge2:
-                score += 1
+            for attr in set(edge1) | set(edge2):
+                if edge1.get(attr) == edge2.get(attr):
+                    score += 1
         scores.append((score, m_idx))
 
     # This one should be the best.
     _, m_idx = max(scores)
     match = matches[m_idx]
-    graph1_nodes = []
-    graph2_nodes = []
-    for node_idx, node_jdx in match.items():
-        graph1_nodes.append(graph1.nodes[node_idx])
-        graph2_nodes.append(graph2.nodes[node_jdx])
-    assert graph1_nodes == graph2_nodes
+    assert dict(graph1.nodes) == {idx: graph2.nodes[match[idx]] for idx in graph1}
+    bad_edges = []
     for idx1, jdx1 in graph1.edges:
         idx2, jdx2 = match[idx1], match[jdx1]
         edge1 = graph1.edges[idx1, jdx1]
         edge2 = graph2.edges[idx2, jdx2]
         if edge1 != edge2:
-            fmt = 'Edge ({}, {}) between {} and {} is not equal: {} is not {}'
-            raise AssertionError(fmt.format(idx1, jdx1, graph1.nodes[idx1],
-                                            graph1.nodes[jdx1],
-                                            edge1, edge2))
+            bad_edges.append((idx1, jdx1, edge1, edge2))
+    msg = ''
+    fmt = 'Edge ({}, {}) between {} and {} is not equal: {} is not {};'
+    for idx, jdx, edge1, edge2 in bad_edges:
+        msg += fmt.format(idx, jdx, graph1.nodes[idx], graph2.nodes[jdx], edge1, edge2)
+    raise AssertionError(msg)
