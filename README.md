@@ -91,10 +91,8 @@ blogposts with a decent writeup on the subject can be found [here][depth_first].
 Despite how simple it seems at a glance, here be dragons lurking in the details.
 The main problem is that in order to determine whether an edge is aromatic, 
 you need to generate *all* simple cycles. To illustrate why this is a problem,
-let's look at C20-fullerene (`C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91`), 
-buckminsterfullerene's smaller brother. C20-fullerene already contains a 
-staggering *1168* distinct simple cycles! I am unable to tell you how many 
-cycles buckminsterfullerene has.
+let's look at buckminsterfullerene: it contains a staggering *15,024,073* 
+cycles! It's really not feasible to investigate all of those separately.
 
 Therefor we approximate the aromaticity for ring systems that are too large. By
 default we consider 30 atoms large. For the exact algorithm, please see the
