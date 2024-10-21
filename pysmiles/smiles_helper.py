@@ -566,12 +566,12 @@ def correct_aromatic_rings(mol, strict=True, estimation_threshold=None, max_ring
     sub_ds_graph = mol.subgraph(ds_graph).copy()
     sub_ds_graph.remove_edges_from(e for e in sub_ds_graph.edges if sub_ds_graph.edges[e].get('order') == 0)
     for u, v in sub_ds_graph.edges:
-        if {u, v} & stars:
-            sub_ds_graph.edges[u, v]['w'] = 0.1
+        # Prefer not matching edges with *, especially *-* edges.
+        sub_ds_graph.edges[u, v]['w'] = 0.1**len({u, v} & stars)
     max_match = nx.max_weight_matching(sub_ds_graph, weight='w')
     # ... it breaks here to be exact, since wildcard atoms /may/ be aromatic,
     # the matching does not need to be perfect. Option: try to (somehow) have
-    # the matching avoid wildcards (where possible, and then for all atoms in
+    # the matching avoid wildcards (where possible), and then for all atoms in
     # arom_atoms that are not part of the matching, if they're wildcards, remove
     # them from arom_atoms. But it gets harder: a) `c1**c1` is aromatic between the
     # wildcards, but b) `c1**1` *IS NOT*. Molecule a needs aromatic bonds, but
