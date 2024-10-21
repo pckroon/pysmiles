@@ -788,7 +788,7 @@ def _estimate_aromatic_cycles(mol):
     return cycles
 
 
-def dekekulize(mol, estimation_threshold=30, max_ring_size=18):
+def dekekulize(mol, estimation_threshold=None, max_ring_size=None):
     """
     Finds all cycles in ``mol`` that consist of alternating single and double
     bonds, and marks them as aromatic.
@@ -802,8 +802,7 @@ def dekekulize(mol, estimation_threshold=30, max_ring_size=18):
     are alternating.
     2) it contains less than `estimation_threshold` nodes, in which case we
     enumerate all possible cycles smaller than `max_ring_size`. Since a molecule
-    can contain an exponential number of cycles this may take a while (for
-    example, buckminsterfullerene takes ~1 minutes to run).
+    can contain an exponential number of cycles this may take a while.
     3) otherwise we estimate the aromaticity by taking the cycles spanned by
     the maximal matching as aromatic. This is mostly correct, but may
     erroneously classify specific triangle edges as aromatic.
@@ -814,7 +813,7 @@ def dekekulize(mol, estimation_threshold=30, max_ring_size=18):
         The molecule.
     estimation_threshold : int
         Aromaticity for ring systems that are larger than this threshold will be
-        estimated. C30 fullerene takes roughly 0.5 seconds to solve exactly.
+        estimated.
     max_ring_size : int
         Maximum ring size to consider for the exact case. 18 is the lowest
         value for which C60 fullerene is still fully aromatic.
@@ -825,7 +824,7 @@ def dekekulize(mol, estimation_threshold=30, max_ring_size=18):
         ``mol`` is modified in place.
     """
     estimation_threshold = estimation_threshold if estimation_threshold is not None else 30
-    max_ring_size = max_ring_size if max_ring_size is not None else 18
+    max_ring_size = max_ring_size if max_ring_size is not None else 25
     # Light reading for the next round:
     # https://pubmed.ncbi.nlm.nih.gov/22780427/
     # https://ringdecomposerlib.readthedocs.io/en/latest/
