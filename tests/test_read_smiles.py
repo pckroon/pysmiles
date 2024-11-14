@@ -92,6 +92,37 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False
     ),
     (
+        'c1ccccc1-c1ccccc1',
+        [(0, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (1, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (2, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (3, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (4, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (5, {'charge': 0, 'element': 'C', 'hcount': 0, 'aromatic': True}),
+         (6, {'charge': 0, 'element': 'C', 'hcount': 0, 'aromatic': True}),
+         (7, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (8, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (9, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (10, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (11, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': True})
+         ],
+        [(0, 1, {'order': 1.5}),
+         (0, 5, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 6, {'order': 1}),
+         (6, 7, {'order': 1.5}),
+         (6, 11, {'order': 1.5}),
+         (7, 8, {'order': 1.5}),
+         (8, 9, {'order': 1.5}),
+         (9, 10, {'order': 1.5}),
+         (10, 11, {'order': 1.5})
+         ],
+        False
+    ),
+    (
         'C1CC=1',
         [(0, {'charge': 0, 'element': 'C', 'hcount': 1, 'aromatic': False}),
          (1, {'charge': 0, 'element': 'C', 'hcount': 2, 'aromatic': False}),
@@ -615,6 +646,22 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (8, 9, {'order': 1.5})],
         False
     ),
+    (
+        'C1=CC=C=C=C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),],
+        [(0, 1, {'order': 2}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (3, 4, {'order': 2}),
+         (4, 5, {'order': 2}),
+         (0, 5, {'order': 1})],
+        False
+    ),
     # chiral center S/L alanine
     (
         'C[C@@H](C(=O)O)N',
@@ -750,6 +797,113 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
          (2, 3, {'order': 1}),],
         False,
     ),
+    (
+        'C1=CC=C[SiH]=C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (4, {'element': 'Si', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),],
+        [(0, 1, {'order': 2}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (3, 4, {'order': 1}),
+         (4, 5, {'order': 2}),
+         (5, 0, {'order': 1}),],
+        False
+    ),
+    (
+        'C2CC1=CC1=2',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0})],
+        [(0, 1, {'order': 1}),
+         (0, 4, {'order': 2}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (2, 4, {'order': 1}),
+         (3, 4, {'order': 1})],
+        False
+    ),
+    (
+        'C1=CC=CC1=C1C=CC=C1',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 0}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (7, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (8, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (9, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1})],
+        [(0, 1, {'order': 2}),
+         (0, 4, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (2, 3, {'order': 2}),
+         (3, 4, {'order': 1}),
+         (4, 5, {'order': 2}),
+         (5, 6, {'order': 1}),
+         (5, 9, {'order': 1}),
+         (6, 7, {'order': 2}),
+         (7, 8, {'order': 1}),
+         (8, 9, {'order': 2})],
+        False
+    ),
+    (
+        'c1c2-c3c2-c1c3',
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1})],
+        [(0, 1, {'order': 1.5}),
+         (0, 4, {'order': 1.5}),
+         (1, 2, {'order': 1}),
+         (1, 3, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (2, 5, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5})],
+        False
+    ),
+    (
+        '*1=Cc2ccc1cc2',
+        [(0, {'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (3, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (4, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (5, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (6, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1}),
+         (7, {'element': 'C', 'charge': 0, 'aromatic': True, 'hcount': 1})],
+        [(0, 1, {'order': 1.5}),
+         (0, 5, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (2, 7, {'order': 1.5}),
+         (3, 4, {'order': 1.5}),
+         (4, 5, {'order': 1.5}),
+         (5, 6, {'order': 1.5}),
+         (6, 7, {'order': 1.5})],
+        False
+    ),
+    (
+        '*1ccc1',
+        [(0, {'charge': 0, 'aromatic': True, 'hcount': 0}),
+         (1, {'charge': 0, 'aromatic': True, 'element': 'C', 'hcount': 1}),
+         (2, {'charge': 0, 'aromatic': True, 'element': 'C', 'hcount': 1}),
+         (3, {'charge': 0, 'aromatic': True, 'element': 'C', 'hcount': 1}),],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 3, {'order': 1.5}),
+         (0, 3, {'order': 1.5}),],
+        False
+    )
 ))
 def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     found = read_smiles(smiles, explicit_hydrogen=explicit_h)
@@ -769,11 +923,14 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('1CCC1', ValueError),
     ('ccc', SyntaxError),
     ('C=1CC-1', ValueError),
+    ('[Uoo]', KeyError),
+    ('F/C=CF', ValueError),
+    ('C=.C', ValueError),
+    ('C[O@]C', ValueError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
         read_smiles(smiles)
-
 
 
 @pytest.mark.parametrize('smiles,expected', [
@@ -840,3 +997,21 @@ def test_skip_kekulize(smiles):
     for node in g.nodes:
         assert g.nodes[node]['aromatic']
     assert g.edges[(0, 1)]['order'] == 1.5
+
+
+@pytest.mark.parametrize('smiles', (
+    'c1cc2ccc3c2c1cc3',
+    'c12cccc1c1cccc1cc2',
+    'c12c3c4c5c2c2c6c7c1c1c8c3c3c9c4c4c%10c5c5c2c2c6c6c%11c7c1c1c7c8c3c3c8c9c4c4c9c%10c5c5c2c2c6c6c%11c1c1c7c3c3c8c4c4c9c5c2c2c6c1c3c42',
+    'C1=CC2=CC=C3C2=C1C=C3',
+    'C1=C2C(=C3C=CC=C3C=C2)C=C1',
+    'C12=C3C4=C5C6=C3C7=C1C8=C9C2=C4C1=C5C2=C6C7=C8C2=C91',  # C20 fullerene, 0.03s
+    'c12c3c4c5c6c3c3c2c2c7c8c9c%10c(c4c1c%107)c1c5c4c6c5c3c2c8c2c5c4c1c29',  # C30 fullerene , 0.4s
+    'c12c3c4c5c6c7c4c4c2c2c8c1c1c3c5c3c5c1c1c8c8c9c%10c(c4c4c7c7c6c3c3c5c1c9c1c3c7c4c1%10)c82',  # C40 fullerene, 4s
+    'c12c3c4c5c6c3c3c7c1c1c8c9c%10c(c82)c4c2c5c4c5c6c6c8c%11c%12c%13c%14c%11c(c7c7c1c1c9c9c%11c%10c2c2c4c(c85)c%12c(c2%11)c%13c9c1c%147)c63',  # C50 fullerene, 40s
+    'C12=C3C4=C5C1=C1C6=C7C2=C2C8=C3C3=C9C4=C4C%10=C5C5=C1C1=C6C6=C%11C7=C2C2=C7C8=C3C3=C8C9=C4C4=C9C%10=C5C5=C1C1=C6C6=C%11C2=C2C7=C3C3=C8C4=C4C9=C5C1=C1C6=C2C3=C14',  # C60 fullerene
+))
+def test_aromatic_molecules(smiles):
+    """These molecules are totally aromatic"""
+    mol = read_smiles(smiles, reinterpret_aromatic=True)
+    assert all(nx.get_node_attributes(mol, 'aromatic').values())
