@@ -61,8 +61,10 @@ def _tokenize(smiles):
     organic_subset = 'B C N O P S F Cl Br I * b c n o s p'.split()
     smiles = iter(smiles)
     token = ''
+    idx = -1
     peek = None
     while True:
+        idx += 1
         char = peek if peek else next(smiles, '')
         peek = None
         if not char:
@@ -73,28 +75,28 @@ def _tokenize(smiles):
                 token += char
                 if char == ']':
                     break
-            yield TokenType.ATOM, token
+            yield TokenType.ATOM, idx, token
         elif char in organic_subset:
             peek = next(smiles, '')
             if char + peek in organic_subset:
-                yield TokenType.ATOM, char + peek
+                yield TokenType.ATOM, idx, char + peek
                 peek = None
             else:
-                yield TokenType.ATOM, char
+                yield TokenType.ATOM, idx, char
         elif char in '-=#$:.':
-            yield TokenType.BOND_TYPE, char
+            yield TokenType.BOND_TYPE, idx, char
         elif char == '(':
-            yield TokenType.BRANCH_START, '('
+            yield TokenType.BRANCH_START, idx, '('
         elif char == ')':
-            yield TokenType.BRANCH_END, ')'
+            yield TokenType.BRANCH_END, idx, ')'
         elif char == '%':
             # If smiles is too short this will raise a ValueError, which is
             # (slightly) prettier than a StopIteration.
-            yield TokenType.RING_NUM, int(next(smiles, '') + next(smiles, ''))
+            yield TokenType.RING_NUM, idx, int(next(smiles, '') + next(smiles, ''))
         elif char in '/\\':
-            yield TokenType.EZSTEREO, char
+            yield TokenType.EZSTEREO, idx, char
         elif char.isdigit():  # pragma: no branch
-            yield TokenType.RING_NUM, int(char)
+            yield TokenType.RING_NUM, idx, int(char)
 
 
 def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
@@ -121,7 +123,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     created_ring_bonds = []
     prev_token = None
     prev_type = None
-    for tokentype, token in _tokenize(smiles):
+    for tokentype, token_idx, token in _tokenize(smiles):
         if tokentype == TokenType.ATOM:
             mol.add_node(idx, **{node_attr: token})
             if anchor is not None:
@@ -235,12 +237,6 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     default_aromatic_bond = 1.5
     mol, ez_isomer_pairs, ring_bonds = base_smiles_parser(smiles, strict=strict, node_attr='_atom_str', edge_attr='_bond_str')
     for node in mol:
-        mol.nodes[node].update(parse_atom(mol.nodes[node]['atom_str']))
-        if mol.nodes[node].get('rs_isomer') and mol.nodes[node]['rs_bond_order']:
-            mol.nodes[node]['rs_isomer'][1].extend(mol.nodes[node]['rs_bond_order'])
-        del mol.nodes[node]['atom_str']
-        if 'rs_bond_order' in mol.nodes[node]:
-            del mol.nodes[node]['rs_bond_order']
         mol.nodes[node].update(parse_atom(mol.nodes[node]['_atom_str']))
     for idx, jdx, attrs in ring_bonds:
         if mol.nodes[idx].get('rs_isomer'):
@@ -258,7 +254,6 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
             mol.edges[edge]['order'] = default_aromatic_bond
         else:
             mol.edges[edge]['order'] = default_bond
-        del mol.edges[edge]['bond_str']
 
     if reinterpret_aromatic:
         correct_aromatic_rings(mol, strict=strict)

@@ -161,6 +161,6 @@ class SMILESTest(RuleBasedStateMachine):
         correct_aromatic_rings(reference)
         # note(found.nodes(data=True))
         # note(found.edges(data=True))
-        assertEqualGraphs(reference, found)
+        assertEqualGraphs(reference, found, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
 
 Tester = SMILESTest.TestCase

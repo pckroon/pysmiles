@@ -911,7 +911,7 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     print(found.edges(data=True))
     print(smiles)
     expected = make_mol(node_data, edge_data)
-    assertEqualGraphs(found, expected)
+    assertEqualGraphs(found, expected, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
 
 @pytest.mark.parametrize('smiles, error_type', (
     ('[CL-]', ValueError),
