@@ -118,15 +118,16 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     ring_nums = {}
     current_ez = None
     ez_isomer_pairs = []
+    created_ring_bonds = []
     prev_token = None
     prev_type = None
     for tokentype, token in _tokenize(smiles):
         if tokentype == TokenType.ATOM:
-            mol.add_node(idx, **{node_attr: token, 'rs_bond_order': []})
+            mol.add_node(idx, **{node_attr: token})
             if anchor is not None:
                 if next_bond is None:
                     next_bond = ""
-                mol.add_edge(anchor, idx, **{edge_attr: next_bond})
+                mol.add_edge(anchor, idx, **{edge_attr: next_bond, '_pos': token_idx})
                 next_bond = None
             anchor = idx
             idx += 1
@@ -158,13 +159,12 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 if idx - 1 == jdx:
                     raise ValueError('Marker {} specifies a bond between an '
                                      'atom and itself'.format(token))
-                mol.add_edge(idx - 1, jdx, **{edge_attr: next_bond})
+                mol.add_edge(idx - 1, jdx, **{edge_attr: next_bond, '_pos': token_idx})
                 next_bond = None
                 del ring_nums[token]
                 # we need to keep track of ring bonds here for the
                 # chirality assignment
-                mol.nodes[idx - 1]['rs_bond_order'].append(jdx)
-                mol.nodes[jdx]['rs_bond_order'].append(idx - 1)
+                created_ring_bonds.append((idx-1, jdx, {edge_attr: next_bond, '_pos': token_idx}))
             else:
                 if idx == 0:
                     raise ValueError("Can't have a marker ({}) before an atom"
@@ -196,7 +196,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     if current_ez and strict:
         raise ValueError('There is an unmatched stereochemical token.')
 
-    return mol, ez_isomer_pairs
+    return mol, ez_isomer_pairs, created_ring_bonds
 
 def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True, 
                 reinterpret_aromatic=True, strict=True):
@@ -233,7 +233,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
     default_bond = 1
     default_aromatic_bond = 1.5
-    mol, ez_isomer_pairs = base_smiles_parser(smiles, strict=strict, node_attr='atom_str', edge_attr='bond_str')
+    mol, ez_isomer_pairs, ring_bonds = base_smiles_parser(smiles, strict=strict, node_attr='_atom_str', edge_attr='_bond_str')
     for node in mol:
         mol.nodes[node].update(parse_atom(mol.nodes[node]['atom_str']))
         if mol.nodes[node].get('rs_isomer') and mol.nodes[node]['rs_bond_order']:
@@ -241,9 +241,15 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         del mol.nodes[node]['atom_str']
         if 'rs_bond_order' in mol.nodes[node]:
             del mol.nodes[node]['rs_bond_order']
+        mol.nodes[node].update(parse_atom(mol.nodes[node]['_atom_str']))
+    for idx, jdx, attrs in ring_bonds:
+        if mol.nodes[idx].get('rs_isomer'):
+            mol.nodes[idx]['rs_isomer'][1].append(jdx)
+        if mol.nodes[jdx].get('rs_isomer'):
+            mol.nodes[jdx]['rs_isomer'][1].append(idx)
     for edge in mol.edges:
-        if mol.edges[edge]['bond_str']:
-            order = bond_to_order[mol.edges[edge]['bond_str']]
+        if mol.edges[edge]['_bond_str']:
+            order = bond_to_order[mol.edges[edge]['_bond_str']]
             if not order and not zero_order_bonds:
                 mol.remove_edge(*edge)
                 continue
