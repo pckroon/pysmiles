@@ -97,6 +97,107 @@ def _tokenize(smiles):
             yield TokenType.RING_NUM, int(char)
 
 
+def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
+    """
+    Parse but do not interpret a SMILES string to a graph. Nodes and edges will
+    be annotated with their constructing string description.
+
+    Parameters
+    ----------
+    smiles : str
+
+    Returns
+    -------
+    nx.Graph
+    """
+    mol = nx.Graph(smiles=smiles)
+    anchor = None
+    idx = 0
+    next_bond = None
+    branches = []
+    ring_nums = {}
+    current_ez = None
+    ez_isomer_pairs = []
+    prev_token = None
+    prev_type = None
+    for tokentype, token in _tokenize(smiles):
+        if tokentype == TokenType.ATOM:
+            mol.add_node(idx, **{node_attr: token, 'rs_bond_order': []})
+            if anchor is not None:
+                if next_bond is None:
+                    next_bond = ""
+                mol.add_edge(anchor, idx, **{edge_attr: next_bond})
+                next_bond = None
+            anchor = idx
+            idx += 1
+        elif tokentype == TokenType.BRANCH_START:
+            branches.append(anchor)
+        elif tokentype == TokenType.BRANCH_END:
+            anchor = branches.pop()
+        elif tokentype == TokenType.BOND_TYPE:
+            if next_bond is not None:
+                raise ValueError('Previous bond (order {}) not used. '
+                                 'Overwritten by "{}"'.format(next_bond, token))
+            next_bond = token
+        elif tokentype == TokenType.RING_NUM:
+            if token in ring_nums:
+                jdx, order = ring_nums[token]
+                if next_bond is None and order is None:
+                    next_bond = ""
+                elif order is None:  # Note that the check is needed,
+                    next_bond = next_bond  # But this could be pass.
+                elif next_bond is None:
+                    next_bond = order
+                elif next_bond != order:  # Both are not None
+                    raise ValueError('Conflicting bond orders for ring '
+                                     'between indices {}'.format(token))
+                # idx is the index of the *next* atom we're adding. So: -1.
+                if mol.has_edge(idx - 1, jdx):
+                    raise ValueError('Edge specified by marker {} already '
+                                     'exists'.format(token))
+                if idx - 1 == jdx:
+                    raise ValueError('Marker {} specifies a bond between an '
+                                     'atom and itself'.format(token))
+                mol.add_edge(idx - 1, jdx, **{edge_attr: next_bond})
+                next_bond = None
+                del ring_nums[token]
+                # we need to keep track of ring bonds here for the
+                # chirality assignment
+                mol.nodes[idx - 1]['rs_bond_order'].append(jdx)
+                mol.nodes[jdx]['rs_bond_order'].append(idx - 1)
+            else:
+                if idx == 0:
+                    raise ValueError("Can't have a marker ({}) before an atom"
+                                     "".format(token))
+                # idx is the index of the *next* atom we're adding. So: -1.
+                ring_nums[token] = (idx - 1, next_bond)
+                next_bond = None
+        elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
+            # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
+            # we found the second ez reference and
+            # annotate the molecule
+            if current_ez:
+                ez_isomer_pairs.append((current_ez, (idx, anchor, token)))
+                current_ez = None
+            # current_ez is formatted as:
+            # ligand, anchor, token where ligand is the atom defining CIS/TRANS
+            # we found a token belonging to a branch (e.g. C(\F))
+            elif prev_type == TokenType.BRANCH_START:
+                current_ez = (idx, anchor, token)
+            else:
+                current_ez = (anchor, idx, token)
+
+        prev_token = token
+        prev_type = tokentype
+
+    if ring_nums and strict:
+        raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
+
+    if current_ez and strict:
+        raise ValueError('There is an unmatched stereochemical token.')
+
+    return mol, ez_isomer_pairs
+
 def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True, 
                 reinterpret_aromatic=True, strict=True):
     """
@@ -130,104 +231,28 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         Edges will have an 'order'.
     """
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
-    mol = nx.Graph()
-    anchor = None
-    idx = 0
     default_bond = 1
     default_aromatic_bond = 1.5
-    next_bond = None
-    branches = []
-    ring_nums = {}
-    current_ez = None
-    prev_token = None
-    prev_type = None
-    ez_isomer_pairs = []
-    for tokentype, token in _tokenize(smiles):
-        if tokentype == TokenType.ATOM:
-            mol.add_node(idx, **parse_atom(token))
-            if anchor is not None:
-                if next_bond is None:
-                    if mol.nodes[anchor].get('aromatic') and mol.nodes[idx].get('aromatic'):
-                        next_bond = default_aromatic_bond
-                    else:
-                        next_bond = default_bond
-                if next_bond or zero_order_bonds:
-                    mol.add_edge(anchor, idx, order=next_bond)
-                next_bond = None
-            anchor = idx
-            idx += 1
-        elif tokentype == TokenType.BRANCH_START:
-            branches.append(anchor)
-        elif tokentype == TokenType.BRANCH_END:
-            anchor = branches.pop()
-        elif tokentype == TokenType.BOND_TYPE:
-            if next_bond is not None:
-                raise ValueError('Previous bond (order {}) not used. '
-                                 'Overwritten by "{}"'.format(next_bond, token))
-            next_bond = bond_to_order[token]
-        elif tokentype == TokenType.RING_NUM:
-            if token in ring_nums:
-                jdx, order = ring_nums[token]
-                if next_bond is None and order is None:
-                    if mol.nodes[idx-1].get('aromatic') and mol.nodes[jdx].get('aromatic'):
-                        next_bond = default_aromatic_bond
-                    else:
-                        next_bond = default_bond
-                elif order is None:  # Note that the check is needed,
-                    next_bond = next_bond  # But this could be pass.
-                elif next_bond is None:
-                    next_bond = order
-                elif next_bond != order:  # Both are not None
-                    raise ValueError('Conflicting bond orders for ring '
-                                     'between indices {}'.format(token))
-                # idx is the index of the *next* atom we're adding. So: -1.
-                if mol.has_edge(idx-1, jdx):
-                    raise ValueError('Edge specified by marker {} already '
-                                     'exists'.format(token))
-                if idx-1 == jdx:
-                    raise ValueError('Marker {} specifies a bond between an '
-                                     'atom and itself'.format(token))
-                if next_bond or zero_order_bonds:
-                    mol.add_edge(idx - 1, jdx, order=next_bond)
-                    # we need to keep track of ring bonds here for the
-                    # chirality assignment
-                    if mol.nodes[idx-1].get('rs_isomer', False):
-                        mol.nodes[idx-1]['rs_isomer'][1].append(jdx)
-                    if mol.nodes[jdx].get('rs_isomer', False):
-                        mol.nodes[jdx]['rs_isomer'][1].append(idx-1)
-
-                next_bond = None
-                del ring_nums[token]
-            else:
-                if idx == 0:
-                    raise ValueError("Can't have a marker ({}) before an atom"
-                                     "".format(token))
-                # idx is the index of the *next* atom we're adding. So: -1.
-                ring_nums[token] = (idx - 1, next_bond)
-                next_bond = None
-        elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
-            # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
-            # we found the second ez reference and
-            # annotate the molecule
-            if current_ez:
-                ez_isomer_pairs.append((current_ez, (idx, anchor, token)))
-                current_ez = None
-            # current_ez is formatted as:
-            # ligand, anchor, token where ligand is the atom defining CIS/TRANS
-            # we found a token belonging to a branch (e.g. C(\F))
-            elif prev_type == TokenType.BRANCH_START:
-                current_ez = (idx, anchor, token)
-            else:
-                current_ez = (anchor, idx, token)
-
-        prev_token = token
-        prev_type = tokentype
-
-    if ring_nums and strict:
-        raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
-
-    if current_ez and strict:
-        raise ValueError('There is an unmatched stereochemical token.')
+    mol, ez_isomer_pairs = base_smiles_parser(smiles, strict=strict, node_attr='atom_str', edge_attr='bond_str')
+    for node in mol:
+        mol.nodes[node].update(parse_atom(mol.nodes[node]['atom_str']))
+        if mol.nodes[node].get('rs_isomer') and mol.nodes[node]['rs_bond_order']:
+            mol.nodes[node]['rs_isomer'][1].extend(mol.nodes[node]['rs_bond_order'])
+        del mol.nodes[node]['atom_str']
+        if 'rs_bond_order' in mol.nodes[node]:
+            del mol.nodes[node]['rs_bond_order']
+    for edge in mol.edges:
+        if mol.edges[edge]['bond_str']:
+            order = bond_to_order[mol.edges[edge]['bond_str']]
+            if not order and not zero_order_bonds:
+                mol.remove_edge(*edge)
+                continue
+            mol.edges[edge]['order'] = order
+        elif mol.nodes[edge[0]].get('aromatic') and mol.nodes[edge[1]].get('aromatic'):
+            mol.edges[edge]['order'] = default_aromatic_bond
+        else:
+            mol.edges[edge]['order'] = default_bond
+        del mol.edges[edge]['bond_str']
 
     if reinterpret_aromatic:
         correct_aromatic_rings(mol, strict=strict)
