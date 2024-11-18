@@ -147,7 +147,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     prev_type = None
     for tokentype, token_idx, token in _tokenize(smiles):
         if tokentype == TokenType.ATOM:
-            mol.add_node(idx, **{node_attr: token})
+            mol.add_node(idx, **{node_attr: token, '_pos': token_idx})
             if anchor is not None:
                 if next_bond is None:
                     next_bond = ""
@@ -295,9 +295,23 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
             else:
                 LOGGER.warning(msg)
         elif element != '*' and bonds_missing(mol, node):
-            debug_smiles = write_smiles_component(nx.ego_graph(mol, node))
+            attrs = mol.nodes[node]
+            node_position = (attrs['_pos'] - 5, attrs['_pos'] + len(attrs['_atom_str']) + 5)
+            if node_position[0] < 0:
+                left_idx = 0
+                prefix = ''
+            else:
+                left_idx = node_position[0]
+                prefix = '...'
+            if node_position[1] >= len(smiles):
+                right_idx = len(smiles) - 1
+                suffix = ''
+            else:
+                right_idx = node_position[1]
+                suffix = '...'
+            debug_smiles = prefix + smiles[left_idx:right_idx] + suffix
             msg = (f'Node {node} ({format_atom(mol, node)}) has non-standard'
-                   f' valence: ...{debug_smiles}...')
+                   f' valence: {debug_smiles}')
             if strict:
                 raise KeyError(msg)
             else:
