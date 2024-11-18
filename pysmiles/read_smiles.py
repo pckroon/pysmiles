@@ -55,8 +55,9 @@ def _tokenize(smiles):
 
     Yields
     ------
-    tuple(TokenType, str)
-        A tuple describing the type of token and the associated data
+    tuple(TokenType, int, str)
+        A tuple describing the type of token, its position, and the associated
+        data.
     """
     organic_subset = 'B C N O P S F Cl Br I * b c n o s p'.split()
     smiles = iter(smiles)
@@ -102,15 +103,36 @@ def _tokenize(smiles):
 def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     """
     Parse but do not interpret a SMILES string to a graph. Nodes and edges will
-    be annotated with their constructing string description.
+    be annotated with their constructing string description as ``node_attr`` and
+    ``edge_attr``. The indices of these strings are annotated in the ``'_pos'``
+    attribute. Finally, the smiles string itself is annotated as a graph
+    attribute under ``'smiles'``.
+
+    This functions also returns stereochemical information that cannot be
+    directly annotated in the graph, since it depends on interpreting nodes and
+    edges.
 
     Parameters
     ----------
-    smiles : str
+    smiles : iterable
+    strict : bool
+    node_attr : collections.abc.Hashable
+    edge_attr : collections.abc.Hashable
 
     Returns
     -------
     nx.Graph
+        The created graph. Nodes are annotated with the string/token that define
+        their attributes in the ``node_attr`` key, edges in the ``edge_attr``
+        key. The indices at which these strings can be found is annotated as
+        ``_pos``.
+    List[Tuple[Tuple[int, int, str], Tuple[int, int, str]]]
+        A list of E/Z isomer pairs, where the integers are node indices and last
+        element is the directional token from the smiles string (*i.e.* / or \).
+    List[Tuple[int, int, {edge_attr: str, '_pos': int}]
+        A list of created ring bonds, to be used for R/S isomer annotation. It
+        contains tuples consisting of 2 node indices, and a dictionary
+        containing the edge attributes.
     """
     mol = nx.Graph(smiles=smiles)
     anchor = None
@@ -235,7 +257,8 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
     default_bond = 1
     default_aromatic_bond = 1.5
-    mol, ez_isomer_pairs, ring_bonds = base_smiles_parser(smiles, strict=strict, node_attr='_atom_str', edge_attr='_bond_str')
+    mol, ez_isomer_pairs, ring_bonds = base_smiles_parser(smiles, strict=strict,
+                                                          node_attr='_atom_str', edge_attr='_bond_str')
     for node in mol:
         mol.nodes[node].update(parse_atom(mol.nodes[node]['_atom_str']))
     for idx, jdx, attrs in ring_bonds:
