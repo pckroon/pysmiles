@@ -927,6 +927,8 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('F/C=CF', ValueError),
     ('C=.C', ValueError),
     ('C[O@]C', ValueError),
+    ('CC(C)(=C)C', KeyError),
+    ('CCCCCCCC$C', KeyError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
