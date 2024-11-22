@@ -15,7 +15,7 @@
 """
 Contains a unittest.TestCase subclass that has an `assertEqualGraphs` method.
 """
-
+from functools import partial
 import operator
 import unittest
 
@@ -29,12 +29,19 @@ def make_mol(node_data, edge_data):
     return mol
 
 
-def assertEqualGraphs(graph1, graph2):  # pylint: disable=invalid-name
+def _equal_dicts(dict1, dict2, excluded_keys=[]):
+    dict1_keys = set(dict1.keys()) - set(excluded_keys)
+    dict2_keys = set(dict2.keys()) - set(excluded_keys)
+    return dict1_keys == dict2_keys and {k1: dict1[k1] for k1 in dict1_keys} == {k2: dict2[k2] for k2 in dict1_keys}
+
+
+def assertEqualGraphs(graph1, graph2, excluded_node_attrs=[], excluded_edge_attrs=[]):  # pylint: disable=invalid-name
     """
     Asserts that `graph1` and `graph2` are equal up to isomorphism.
     """
     out = nx.is_isomorphic(graph1, graph2,
-                           node_match=operator.eq, edge_match=operator.eq)
+                           node_match=partial(_equal_dicts, excluded_keys=excluded_node_attrs),
+                           edge_match=partial(_equal_dicts, excluded_keys=excluded_edge_attrs))
     if out:
         return
 
@@ -51,7 +58,7 @@ def assertEqualGraphs(graph1, graph2):  # pylint: disable=invalid-name
         for node_idx, node_jdx in match.items():
             node1 = graph1.nodes[node_idx]
             node2 = graph2.nodes[node_idx]
-            for attr in set(node1) | set(node2):
+            for attr in (set(node1) | set(node2)) - set(excluded_node_attrs):
                 if node1.get(attr) == node2.get(attr):
                     score += 1
 
@@ -59,7 +66,7 @@ def assertEqualGraphs(graph1, graph2):  # pylint: disable=invalid-name
             idx2, jdx2 = match[idx1], match[jdx1]
             edge1 = graph1.edges[idx1, jdx1]
             edge2 = graph2.edges[idx2, jdx2]
-            for attr in set(edge1) | set(edge2):
+            for attr in (set(edge1) | set(edge2)) - set(excluded_edge_attrs):
                 if edge1.get(attr) == edge2.get(attr):
                     score += 1
         scores.append((score, m_idx))
