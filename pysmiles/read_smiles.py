@@ -296,7 +296,10 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 LOGGER.warning(msg)
         elif element != '*' and bonds_missing(mol, node):
             attrs = mol.nodes[node]
-            node_position = (attrs['_pos'] - 5, attrs['_pos'] + len(attrs['_atom_str']) + 5)
+            # Grab some of the smiles string for debugging purposes
+            surrounding_characters = 5
+            node_position = (attrs['_pos'] - surrounding_characters,
+                             attrs['_pos'] + len(attrs['_atom_str']) + surrounding_characters)
             if node_position[0] < 0:
                 left_idx = 0
                 prefix = ''
