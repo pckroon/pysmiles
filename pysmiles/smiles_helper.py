@@ -894,7 +894,7 @@ def annotate_ez_isomers(molecule, ez_atoms):
             continue
         if anchor1 not in ez_atoms or anchor2 not in ez_atoms:
             if anchor1 in ez_atoms or anchor2 in ez_atoms:
-                msg = ("Dangling E/Z isomer token for double bond between {anchor1} {anchor2}.")
+                msg = (f"Dangling E/Z isomer token for double bond between {anchor1} {anchor2}.")
                 raise ValueError(msg)
             continue
         anchors = [anchor1, anchor2]
