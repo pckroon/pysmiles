@@ -911,14 +911,20 @@ def _annotate_ez_isomers(molecule, ez_pairs):
             elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
                 ez_isomer = 'cis'
         assert ez_isomer is not None
+
+        if molecule.nodes[ligand_first].get('ez_isomer', False):
+            molecule.nodes[ligand_first]['ez_isomer'] = []
+
+        if molecule.nodes[ligand_second].get('ez_isomer', False):
+            molecule.nodes[ligand_second]['ez_isomer'] = []
         # annotate ligands
-        molecule.nodes[ligand_first]['ez_isomer'] = (ligand_first,
-                                                     anchor_first,
-                                                     anchor_second,
-                                                     ligand_second,
-                                                     ez_isomer)
-        molecule.nodes[ligand_second]['ez_isomer'] = (ligand_second,
-                                                      anchor_second,
-                                                      anchor_first,
-                                                      ligand_first,
-                                                      ez_isomer)
+        molecule.nodes[ligand_first]['ez_isomer'].append((ligand_first,
+                                                          anchor_first,
+                                                          anchor_second,
+                                                          ligand_second,
+                                                          ez_isomer))
+        molecule.nodes[ligand_second]['ez_isomer'].append((ligand_second,
+                                                           anchor_second,
+                                                           anchor_first,
+                                                           ligand_first,
+                                                           ez_isomer))
