@@ -26,7 +26,7 @@ from . import PTE
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
                             parse_atom, fill_valence, bonds_missing, format_atom,
                             correct_aromatic_rings,
-                            _mark_chiral_atoms, _annotate_ez_isomers)
+                            _mark_chiral_atoms, annotate_ez_isomers)
 from .write_smiles import write_smiles_component
 
 LOGGER = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     current_ez = None
     prev_token = None
     prev_type = None
-    ez_isomer_pairs = []
+    ez_isomer_atoms = {}
     for tokentype, token in _tokenize(smiles):
         if tokentype == TokenType.ATOM:
             mol.add_node(idx, **parse_atom(token))
@@ -157,6 +157,8 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
             anchor = idx
             idx += 1
         elif tokentype == TokenType.BRANCH_START:
+            if anchor is None:
+                raise SyntaxError('You cannot start a branch before an anchor.')
             branches.append(anchor)
         elif tokentype == TokenType.BRANCH_END:
             anchor = branches.pop()
@@ -206,23 +208,11 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
         elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
-            # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
-            # we found the second ez reference and
-            # annotate the molecule
-            if current_ez:
-                ez_isomer_pairs.append((current_ez, (idx, anchor, token)))
-                current_ez = None
-            # current_ez is formatted as:
-            # ligand, anchor, token where ligand is the atom defining CIS/TRANS
-            # we found a token belonging to a branch (e.g. C(\F))
-            elif prev_type == TokenType.BRANCH_START:
-                current_ez = (idx, anchor, token)
-            else:
-                current_ez = (anchor, idx, token)
+            ez_isomer_atoms[anchor] = token
+            ez_isomer_atoms[idx] = token
 
         prev_token = token
         prev_type = tokentype
-
     if ring_nums and strict:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
 
@@ -255,7 +245,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 LOGGER.warning(msg)
 
     # post-processing of E/Z isomerism
-    _annotate_ez_isomers(mol, ez_isomer_pairs)
+    annotate_ez_isomers(mol, ez_isomer_atoms)
     # post-processing of chiral atoms
     _mark_chiral_atoms(mol)
 

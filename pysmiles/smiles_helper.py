@@ -22,6 +22,7 @@ import logging
 import re
 import operator
 from itertools import product
+from collections import defaultdict
 
 import networkx as nx
 from . import PTE
@@ -876,6 +877,42 @@ def _mark_chiral_atoms(molecule):
             neighbours = [neighbours[0],  neighbours[1], neighbours[3], neighbours[2]]
         molecule.nodes[node]['rs_isomer'] = tuple(neighbours)
 
+def check_for_ez_conflicts(anchor, tagged_nodes, ez_isomer_class):
+    n1, n2 = tagged_nodes
+    if (n1 < anchor and n2 < anchor) or (n1 > anchor and n2 > anchor):
+        assert ez_isomer_class[n1] != ez_isomer_class[n2]
+    else:
+        assert ez_isomer_class[n1] == ez_isomer_class[n2]
+
+def annotate_ez_isomers(molecule, ez_atoms):
+    """
+    Classify E/Z isomers atoms as cis or trans.
+    """
+    ez_isomer_pairs = []
+    for anchor1, anchor2, order in molecule.edges(data='order'):
+        if order != 2:
+            continue
+        if anchor1 not in ez_atoms or anchor2 not in ez_atoms:
+            if anchor1 in ez_atoms or anchor2 in ez_atoms:
+                msg = ("Dangling E/Z isomer token for double bond between {anchor1} {anchor2}.")
+                raise ValueError(msg)
+            continue
+        anchors = [anchor1, anchor2]
+        # we have a double bond and need to check cis/trans
+        ez_on_anchor = defaultdict(list)
+        for anchor in anchors:
+            tagged_nodes = []
+            for neighbor in molecule.neighbors(anchor):
+                # we have a relation
+                if neighbor in ez_atoms and neighbor not in anchors:
+                    ez_on_anchor[anchor].append([neighbor, anchor, ez_atoms[neighbor]])
+                    tagged_nodes.append(neighbor)
+            # we have more than one tag and check compatibility
+            if len(tagged_nodes) > 1:
+                check_for_ez_conflicts(anchor, tagged_nodes, ez_atoms)
+        for s1, s2 in product(ez_on_anchor[anchor1], ez_on_anchor[anchor2]):
+            ez_isomer_pairs.append([s1, s2])
+    _annotate_ez_isomers(molecule, ez_isomer_pairs)
 
 def _annotate_ez_isomers(molecule, ez_pairs):
     for first, second in ez_pairs:
@@ -912,10 +949,10 @@ def _annotate_ez_isomers(molecule, ez_pairs):
                 ez_isomer = 'cis'
         assert ez_isomer is not None
 
-        if molecule.nodes[ligand_first].get('ez_isomer', False):
+        if not molecule.nodes[ligand_first].get('ez_isomer', False):
             molecule.nodes[ligand_first]['ez_isomer'] = []
 
-        if molecule.nodes[ligand_second].get('ez_isomer', False):
+        if not molecule.nodes[ligand_second].get('ez_isomer', False):
             molecule.nodes[ligand_second]['ez_isomer'] = []
         # annotate ligands
         molecule.nodes[ligand_first]['ez_isomer'].append((ligand_first,
