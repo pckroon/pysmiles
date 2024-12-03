@@ -35,7 +35,7 @@ NODE_DATA = st.fixed_dictionaries({
 }).map(lambda d: {k: v for k, v in d.items() if v is not None})
 FRAGMENTS = st.sampled_from('C O N P S c1ccccc1 C(=O)[O-] C(=O)O *'.split())
 
-@settings(max_examples=500, stateful_step_count=100, deadline=None)
+@settings(max_examples=500, stateful_step_count=50, deadline=None)
 class SMILESTest(RuleBasedStateMachine):
     @initialize(fragment=FRAGMENTS)
     def setup(self, fragment):

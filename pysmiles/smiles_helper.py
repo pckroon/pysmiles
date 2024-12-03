@@ -22,6 +22,7 @@ import logging
 import re
 import operator
 from itertools import product
+from collections import defaultdict
 
 import networkx as nx
 from . import PTE
@@ -876,8 +877,51 @@ def _mark_chiral_atoms(molecule):
             neighbours = [neighbours[0],  neighbours[1], neighbours[3], neighbours[2]]
         molecule.nodes[node]['rs_isomer'] = tuple(neighbours)
 
+def _check_for_ez_conflicts(anchor, tagged_nodes, ez_isomer_class):
+    """
+    Checks if the cis/trans assignment of two ligands connected
+    to the same anchor is consistent. For example, F\(Br\)C=C\Cl is
+    not allowed as they indicate that both F and Br have the same
+    position relative to the carbon.
+    """
+    n1, n2 = tagged_nodes
+    msg = f"Conflicting cis/trans assignment for ligands on node {anchor}."
+    if (n1 < anchor and n2 < anchor) or (n1 > anchor and n2 > anchor):
+        if ez_isomer_class[n1] == ez_isomer_class[n2]:
+            raise ValueError(msg)
+    else:
+        if ez_isomer_class[n1] != ez_isomer_class[n2]:
+            raise ValueError(msg)
 
-def _annotate_ez_isomers(molecule, ez_pairs):
+def _annotate_ez_isomers(molecule, ez_atoms):
+    """
+    Classify E/Z isomers atoms as cis or trans.
+    """
+    ez_isomer_pairs = []
+    for anchor1, anchor2, order in molecule.edges(data='order'):
+        if order != 2:
+            continue
+        if (anchor1 not in ez_atoms and anchor2 in ez_atoms) or (anchor2 not in ez_atoms and anchor1 in ez_atoms):
+            msg = (f"Dangling E/Z isomer token for double bond between {anchor1} {anchor2}.")
+            raise ValueError(msg)
+        anchors = [anchor1, anchor2]
+        # we have a double bond and need to check cis/trans
+        ez_on_anchor = defaultdict(list)
+        for anchor in anchors:
+            tagged_nodes = []
+            for neighbor in set(molecule.neighbors(anchor)) - set(anchors):
+                # we have a relation
+                if neighbor in ez_atoms:
+                    ez_on_anchor[anchor].append([neighbor, anchor, ez_atoms[neighbor]])
+                    tagged_nodes.append(neighbor)
+            # we have more than one tag and check compatibility
+            if len(tagged_nodes) > 1:
+                _check_for_ez_conflicts(anchor, tagged_nodes, ez_atoms)
+        for s1, s2 in product(ez_on_anchor[anchor1], ez_on_anchor[anchor2]):
+            ez_isomer_pairs.append([s1, s2])
+    _interpret_cis_trans_tokens(molecule, ez_isomer_pairs)
+
+def _interpret_cis_trans_tokens(molecule, ez_pairs):
     for first, second in ez_pairs:
         ligand_first, anchor_first, ez_first = first
         ligand_second, anchor_second, ez_second = second
@@ -911,14 +955,17 @@ def _annotate_ez_isomers(molecule, ez_pairs):
             elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
                 ez_isomer = 'cis'
         assert ez_isomer is not None
+
+        molecule.nodes[ligand_first]['ez_isomer'] = molecule.nodes[ligand_first].get('ez_isomer', [])
+        molecule.nodes[ligand_second]['ez_isomer'] = molecule.nodes[ligand_second].get('ez_isomer', [])
         # annotate ligands
-        molecule.nodes[ligand_first]['ez_isomer'] = (ligand_first,
-                                                     anchor_first,
-                                                     anchor_second,
-                                                     ligand_second,
-                                                     ez_isomer)
-        molecule.nodes[ligand_second]['ez_isomer'] = (ligand_second,
-                                                      anchor_second,
-                                                      anchor_first,
-                                                      ligand_first,
-                                                      ez_isomer)
+        molecule.nodes[ligand_first]['ez_isomer'].append((ligand_first,
+                                                          anchor_first,
+                                                          anchor_second,
+                                                          ligand_second,
+                                                          ez_isomer))
+        molecule.nodes[ligand_second]['ez_isomer'].append((ligand_second,
+                                                           anchor_second,
+                                                           anchor_first,
+                                                           ligand_first,
+                                                           ez_isomer))
