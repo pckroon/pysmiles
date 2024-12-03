@@ -26,7 +26,7 @@ from . import PTE
 from .smiles_helper import (add_explicit_hydrogens, remove_explicit_hydrogens,
                             parse_atom, fill_valence, bonds_missing, format_atom,
                             correct_aromatic_rings,
-                            _mark_chiral_atoms, annotate_ez_isomers)
+                            _mark_chiral_atoms, _annotate_ez_isomers)
 from .write_smiles import write_smiles_component
 
 LOGGER = logging.getLogger(__name__)
@@ -245,7 +245,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 LOGGER.warning(msg)
 
     # post-processing of E/Z isomerism
-    annotate_ez_isomers(mol, ez_isomer_atoms)
+    _annotate_ez_isomers(mol, ez_isomer_atoms)
     # post-processing of chiral atoms
     _mark_chiral_atoms(mol)
 

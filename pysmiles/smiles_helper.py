@@ -877,14 +877,23 @@ def _mark_chiral_atoms(molecule):
             neighbours = [neighbours[0],  neighbours[1], neighbours[3], neighbours[2]]
         molecule.nodes[node]['rs_isomer'] = tuple(neighbours)
 
-def check_for_ez_conflicts(anchor, tagged_nodes, ez_isomer_class):
+def _check_for_ez_conflicts(anchor, tagged_nodes, ez_isomer_class):
+    """
+    Checks if the cis/trans assignment of two ligands connected
+    to the same anchor is consistent. For example, F\(Br\)C=C\Cl is
+    not allowed as they indicate that both F and Br have the same
+    position relative to the carbon.
+    """
     n1, n2 = tagged_nodes
+    msg = f"Conflicting cis/trans assignment for ligands on node {anchor}."
     if (n1 < anchor and n2 < anchor) or (n1 > anchor and n2 > anchor):
-        assert ez_isomer_class[n1] != ez_isomer_class[n2]
+        if ez_isomer_class[n1] == ez_isomer_class[n2]:
+            raise ValueError(msg)
     else:
-        assert ez_isomer_class[n1] == ez_isomer_class[n2]
+        if ez_isomer_class[n1] != ez_isomer_class[n2]:
+            raise ValueError(msg)
 
-def annotate_ez_isomers(molecule, ez_atoms):
+def _annotate_ez_isomers(molecule, ez_atoms):
     """
     Classify E/Z isomers atoms as cis or trans.
     """
@@ -907,12 +916,12 @@ def annotate_ez_isomers(molecule, ez_atoms):
                     tagged_nodes.append(neighbor)
             # we have more than one tag and check compatibility
             if len(tagged_nodes) > 1:
-                check_for_ez_conflicts(anchor, tagged_nodes, ez_atoms)
+                _check_for_ez_conflicts(anchor, tagged_nodes, ez_atoms)
         for s1, s2 in product(ez_on_anchor[anchor1], ez_on_anchor[anchor2]):
             ez_isomer_pairs.append([s1, s2])
-    _annotate_ez_isomers(molecule, ez_isomer_pairs)
+    _interpret_cis_trans_tokens(molecule, ez_isomer_pairs)
 
-def _annotate_ez_isomers(molecule, ez_pairs):
+def _interpret_cis_trans_tokens(molecule, ez_pairs):
     for first, second in ez_pairs:
         ligand_first, anchor_first, ez_first = first
         ligand_second, anchor_second, ez_second = second
