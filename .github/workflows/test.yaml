@@ -22,9 +22,9 @@ jobs:
        py_version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.py_version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.py_version }}
     - name: Install dependencies
@@ -44,9 +44,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.11
     - name: Install dependencies
@@ -57,3 +57,41 @@ jobs:
     - name: Run pylint
       run: |
          pylint --disable=fixme --fail-under=8.0 pysmiles tests
+
+  deploy:
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pysmiles
+    permissions:
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-tags: true
+        fetch-depth: 0
+    - name: Set up Python 3
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: |
+          **/setup.cfg
+          **/requirements-*.txt
+          **/pyproject.toml
+    - name: Install dependencies
+      run: |
+        pip install --upgrade setuptools pip
+        pip install --upgrade .
+    - name: Install pypa/build
+      run: |
+        python3 -m pip install build pbr --user
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build --sdist --wheel --outdir dist/
+    - name: Publish distribution 📦 to test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+#        user: __token__
+#        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
