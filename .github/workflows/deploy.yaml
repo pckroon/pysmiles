@@ -42,10 +42,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/vermouth
+      url: https://pypi.org/p/pysmiles
     permissions:
       id-token: write
-
     steps:
     - uses: actions/checkout@v4
       with:
@@ -54,12 +53,12 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.11
+        python-version: '3.11'
         cache: pip
         cache-dependency-path: |
-            **/setup.cfg
-            **/requirements-*.txt
-            **/pyproject.toml
+          **/setup.cfg
+          **/requirements-*.txt
+          **/pyproject.toml
     - name: Install dependencies
       run: |
         pip install --upgrade setuptools pip

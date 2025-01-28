@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/vermouth
+      url: https://test.pypi.org/p/pysmiles
     permissions:
       id-token: write
     steps:
@@ -89,7 +89,7 @@ jobs:
         python3 -m pip install build pbr --user
     - name: Build a binary wheel and a source tarball
       run: python3 -m build --sdist --wheel --outdir dist/
-    - name: Publish distribution 📦 to PyPI
+    - name: Publish distribution 📦 to test PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
