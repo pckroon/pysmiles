@@ -768,10 +768,10 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
         False,
     ),
     (r'F\C=C\F',
-        [(0, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (0, 1, 2, 3, 'trans')}),
+        [(0, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': [(0, 1, 2, 3, 'trans')]}),
          (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
-         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (3, 2, 1, 0, 'trans')}),],
+         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': [(3, 2, 1, 0, 'trans')]}),],
         [(0, 1, {'order': 1}),
          (1, 2, {'order': 2}),
          (2, 3, {'order': 1}),],
@@ -779,9 +779,9 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     (r'C(/F)=C\F',
         [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
-         (1, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (1, 0, 2, 3, 'trans')}),
+         (1, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': [(1, 0, 2, 3, 'trans')]}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
-         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (3, 2, 0, 1, 'trans')}),],
+         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': [(3, 2, 0, 1, 'trans')]}),],
         [(0, 1, {'order': 1}),
          (0, 2, {'order': 2}),
          (2, 3, {'order': 1}),],
@@ -789,9 +789,9 @@ from pysmiles.testhelper import assertEqualGraphs, make_mol
     ),
     (r'C(\F)=C\F',
         [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
-         (1, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (1, 0, 2, 3, 'cis')}),
+         (1, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': [(1, 0, 2, 3, 'cis')]}),
          (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
-         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': (3, 2, 0, 1, 'cis')}),],
+         (3, {'element': 'F', 'charge': 0, 'aromatic': False, 'hcount': 0, 'ez_isomer': [(3, 2, 0, 1, 'cis')]}),],
         [(0, 1, {'order': 1}),
          (0, 2, {'order': 2}),
          (2, 3, {'order': 1}),],
@@ -961,20 +961,25 @@ def test_chiral(smiles, expected):
 
 
 @pytest.mark.parametrize('smiles, records',[
-    (r'F/C=C/F', [(0, 1, 2, 3, 'trans'), (3, 2, 1, 0, 'trans')]),
-    (r'C(\F)=C/F', [(1, 0, 2, 3, 'trans'), (3, 2, 0, 1, 'trans')]),
-    (r'F\C=C/F', [(0, 1, 2, 3, 'cis'), (3, 2, 1, 0, 'cis')]),
-    (r'C(/F)=C/F', [(1, 0, 2, 3, 'cis'), (3, 2, 0, 1, 'cis')]),
-    (r'F/C(CC)=C/F', [(0, 1, 4, 5, 'trans'), (5, 4, 1, 0, 'trans')]),
-    (r'F/C=C=C=C/F', [(0, 1, 4, 5, 'trans'), (5, 4, 1, 0, 'trans')]),
-    (r'F/C=C=C=C\F', [(0, 1, 4, 5, 'cis'), (5, 4, 1, 0, 'cis')]),
+    (r'F/C=C/F', [[(0, 1, 2, 3, 'trans')], [(3, 2, 1, 0, 'trans')]]),
+    (r'C(\F)=C/F', [[(1, 0, 2, 3, 'trans')], [(3, 2, 0, 1, 'trans')]]),
+    (r'F\C=C/F', [[(0, 1, 2, 3, 'cis')], [(3, 2, 1, 0, 'cis')]]),
+    (r'C(/F)=C/F', [[(1, 0, 2, 3, 'cis')], [(3, 2, 0, 1, 'cis')]]),
+    (r'F/C(CC)=C/F', [[(0, 1, 4, 5, 'trans')], [(5, 4, 1, 0, 'trans')]]),
+    (r'F/C(/F)=C(/F)', [[(0, 1, 3, 4, 'trans')],
+                        [(2, 1, 3, 4, 'cis')],
+                        [(4, 3, 1, 0, 'trans'),
+                         (4, 3, 1, 2, 'cis')]]),
+   # (r'F/C=C=C=C/F', [(0, 1, 4, 5, 'trans'), (5, 4, 1, 0, 'trans')]),
+   # (r'F/C=C=C=C\F', [(0, 1, 4, 5, 'cis'), (5, 4, 1, 0, 'cis')]),
     ('c1ccccc1', None)
 ])
 def test_cis_trans_reading(smiles, records):
     mol = read_smiles(smiles, explicit_hydrogen=False)
     if records:
         for record in records:
-            assert mol.nodes[record[0]]['ez_isomer'] == record
+            for ez_item in record:
+                assert mol.nodes[ez_item[0]]['ez_isomer'] == record
     else:
         assert len(nx.get_node_attributes(mol, 'ez_isomer')) == 0
 

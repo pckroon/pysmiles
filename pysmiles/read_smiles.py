@@ -141,7 +141,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     branches = []
     ring_nums = {}
     current_ez = None
-    ez_isomer_pairs = []
+    ez_isomer_atoms = {}
     created_ring_bonds = []
     prev_token = None
     prev_type = None
@@ -156,6 +156,8 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
             anchor = idx
             idx += 1
         elif tokentype == TokenType.BRANCH_START:
+            if anchor is None:
+                raise SyntaxError('You cannot start a branch before an anchor.')
             branches.append(anchor)
         elif tokentype == TokenType.BRANCH_END:
             anchor = branches.pop()
@@ -197,20 +199,8 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 ring_nums[token] = (idx - 1, next_bond)
                 next_bond = None
         elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
-            # FIXME "It is permissible, but not required, that every atom attached to a double bond be marked."
-            # we found the second ez reference and
-            # annotate the molecule
-            if current_ez:
-                ez_isomer_pairs.append((current_ez, (idx, anchor, token)))
-                current_ez = None
-            # current_ez is formatted as:
-            # ligand, anchor, token where ligand is the atom defining CIS/TRANS
-            # we found a token belonging to a branch (e.g. C(\F))
-            elif prev_type == TokenType.BRANCH_START:
-                current_ez = (idx, anchor, token)
-            else:
-                current_ez = (anchor, idx, token)
-
+            ez_isomer_atoms[anchor] = token
+            ez_isomer_atoms[idx] = token
         prev_token = token
         prev_type = tokentype
 
@@ -220,7 +210,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     if current_ez and strict:
         raise ValueError('There is an unmatched stereochemical token.')
 
-    return mol, ez_isomer_pairs, created_ring_bonds
+    return mol, ez_isomer_atoms, created_ring_bonds
 
 def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True, 
                 reinterpret_aromatic=True, strict=True):
@@ -257,7 +247,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
     default_bond = 1
     default_aromatic_bond = 1.5
-    mol, ez_isomer_pairs, ring_bonds = base_smiles_parser(smiles, strict=strict,
+    mol, ez_isomer_atoms, ring_bonds = base_smiles_parser(smiles, strict=strict,
                                                           node_attr='_atom_str', edge_attr='_bond_str')
     for node in mol:
         mol.nodes[node].update(parse_atom(mol.nodes[node]['_atom_str']))
@@ -321,7 +311,7 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
                 LOGGER.warning(msg)
 
     # post-processing of E/Z isomerism
-    _annotate_ez_isomers(mol, ez_isomer_pairs)
+    _annotate_ez_isomers(mol, ez_isomer_atoms)
     # post-processing of chiral atoms
     _mark_chiral_atoms(mol)
 
