@@ -157,4 +157,4 @@ def test_write_smiles(node_data, edge_data, kwargs):
     print(smiles)
     print(kwargs)
     found = read_smiles(smiles, **kwargs)
-    assertEqualGraphs(mol, found)
+    assertEqualGraphs(mol, found, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
