@@ -802,7 +802,12 @@ def dekekulize(mol, estimation_threshold=None, max_ring_size=None):
 
 def increment_bond_orders(molecule, max_bond_order=3):
     """
-    Increments bond orders up to what the atom's valence allows.
+    Sets and increments bond orders up to what the atom's valence allows.
+
+    For a more complete assignment, a subgraph is induced from molecule from
+    only the nodes with unsatisfied valences; order assignment then iteratively
+    prioritizes terminal edges in this subgraph (where one of the nodes has
+    connectivity=1).
 
     Parameters
     ----------
@@ -814,29 +819,51 @@ def increment_bond_orders(molecule, max_bond_order=3):
     Returns
     -------
     None
-        molecule is modified in-place.
+        molecule edge orders are modified in-place.
     """
-    # Gather the number of open spots for all atoms beforehand, since some
-    # might have multiple oxidation states (e.g. S). We don't want to change
-    # oxidation state halfway through for some funny reason. It shouldn't be
-    # necessary, but it can't hurt.
-    missing_bonds = {}
-    for idx in molecule:
-        missing_bonds[idx] = max(bonds_missing(molecule, idx), 0)
+    missing_bonds = {idx: max(bonds_missing(molecule, idx), 0)
+                     for idx in molecule}
+    for idx, jdx, edge_data in molecule.edges(data=True):
+        edge_data.setdefault('order', 1)
 
-    for idx, jdx in molecule.edges:
+    subgraph = molecule.subgraph([n for n, missing in missing_bonds.items()
+                                  if missing])
+    conn_degree = dict(subgraph.degree())
+
+    def order(edge):
+        return (sorted([conn_degree[ndx] for ndx in edge]) + 
+                sorted([-missing_bonds[ndx] for ndx in edge]))
+
+    prio_queue = sorted(subgraph.edges, key=order, reverse=True)
+    while prio_queue:
+        idx, jdx = prio_queue.pop()
+        for ndx in (idx, jdx):
+            # since we only visit each edge once, we always decrease the
+            # connectivity, regardless of success in incrementing order
+            conn_degree[ndx] -= 1
+
         missing_idx = missing_bonds[idx]
         missing_jdx = missing_bonds[jdx]
-        edge_missing = min(missing_idx, missing_jdx)
-        current_order = molecule.edges[idx, jdx].get("order", 1)
+        if not missing_idx or not missing_jdx:
+            continue
+
+        edge_data = molecule.edges[(idx, jdx)]
+        current_order = edge_data.get("order", 1)
         if current_order == 1.5 or current_order >= max_bond_order:
             continue
-        new_order = edge_missing + current_order
-        new_order = min(new_order, max_bond_order)
-        molecule.edges[idx, jdx]['order'] = new_order
-        missing_bonds[idx] -= edge_missing
-        missing_bonds[jdx] -= edge_missing
 
+        edge_missing = min(missing_idx, missing_jdx)
+        new_order = min(edge_missing + current_order, max_bond_order)
+        added_order = new_order - current_order
+        edge_data['order'] = new_order
+
+        for ndx in (idx, jdx):
+            missing_bonds[ndx] -= added_order
+
+        prio_queue.sort(key=order, reverse=True)
+
+    if any(missing_bonds.values()):
+        LOGGER.warning('Unable to completely assign bond orders from valence.')
 
 def _mark_chiral_atoms(molecule):
     """
@@ -878,7 +905,7 @@ def _mark_chiral_atoms(molecule):
         molecule.nodes[node]['rs_isomer'] = tuple(neighbours)
 
 def _check_for_ez_conflicts(anchor, tagged_nodes, ez_isomer_class):
-    """
+    r"""
     Checks if the cis/trans assignment of two ligands connected
     to the same anchor is consistent. For example, F\(Br\)C=C\Cl is
     not allowed as they indicate that both F and Br have the same
