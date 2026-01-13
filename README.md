@@ -91,7 +91,7 @@ blogposts with a decent writeup on the subject can be found [here][depth_first].
 Despite how simple it seems at a glance, here be dragons lurking in the details.
 The main problem is that in order to determine whether an edge is aromatic, 
 you need to generate *all* simple cycles. To illustrate why this is a problem,
-let's look at buckminsterfullerene: it contains a staggering *15,024,073* 
+let's look at buckminsterfullerene: it contains a staggering *374,237,206* 
 cycles! It's really not feasible to investigate all of those separately.
 
 Therefor we approximate the aromaticity for ring systems that are too large. By
