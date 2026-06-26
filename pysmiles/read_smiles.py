@@ -18,6 +18,7 @@ Exposes functionality needed for parsing SMILES strings.
 """
 
 import enum
+import re
 import logging
 
 import networkx as nx
@@ -244,10 +245,14 @@ def read_smiles(smiles, explicit_hydrogen=False, zero_order_bonds=True,
         information.
         Edges will have an 'order'.
     """
+    # sanitize invalid SMILES input that is accepted by RDKit
+    # see: https://github.com/gruenewald-lab/CGsmiles/issues/70#issuecomment-4750353505
+    pattern = r'(\(=[A-Z]\))(\d)'
+    mod_smiles = re.sub(pattern, r'\2\1', smiles)
     bond_to_order = {'-': 1, '=': 2, '#': 3, '$': 4, ':': 1.5, '.': 0}
     default_bond = 1
     default_aromatic_bond = 1.5
-    mol, ez_isomer_atoms, ring_bonds = base_smiles_parser(smiles, strict=strict,
+    mol, ez_isomer_atoms, ring_bonds = base_smiles_parser(mod_smiles, strict=strict,
                                                           node_attr='_atom_str', edge_attr='_bond_str')
     for node in mol:
         mol.nodes[node].update(parse_atom(mol.nodes[node]['_atom_str']))
