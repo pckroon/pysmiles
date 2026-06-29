@@ -1022,3 +1022,25 @@ def test_aromatic_molecules(smiles):
     """These molecules are totally aromatic"""
     mol = read_smiles(smiles, reinterpret_aromatic=True)
     assert all(nx.get_node_attributes(mol, 'aromatic').values())
+
+
+@pytest.mark.parametrize("smiles", [
+    # these are both interpreted as the same
+    # molecule in RDKit
+    "C(c1c2cccc3c2c(cc1)C(=C)C(=C)C(=C)3)",
+    "C(c1c2cccc3c2c(cc1)C(=C)C(=C)C3(=C))"
+])
+def test_non_canonical_smiles_handling(smiles):
+    # harmonizing SMILES input handling to better match RDKit
+    # can help accommodate SMILES strings provided by chemists
+    # per:
+    # https://github.com/gruenewald-lab/CGsmiles/issues/70
+    mol = read_smiles(smiles)
+    # expected values are from the "good" string at:
+    # https://github.com/gruenewald-lab/CGsmiles/issues/70#issuecomment-4750353505
+    expected_nodes = list(range(17))
+    expected_edges = [(0, 1), (1, 2), (1, 10), (2, 3), (2, 7), (3, 4), (4, 5),
+                      (5, 6), (6, 7), (6, 15), (7, 8), (8, 9), (8, 11), (9, 10),
+                      (11, 12), (11, 13), (13, 14), (13, 15), (15, 16)]
+    assert list(mol.nodes) == expected_nodes
+    assert list(mol.edges) == expected_edges
