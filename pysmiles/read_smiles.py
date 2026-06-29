@@ -179,10 +179,10 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                     raise ValueError('Conflicting bond orders for ring '
                                      'between indices {}'.format(token))
                 # idx is the index of the *next* atom we're adding. So: -1.
-                if mol.has_edge(idx - 1, jdx):
+                if mol.has_edge(anchor, jdx):
                     raise ValueError('Edge specified by marker {} already '
                                      'exists'.format(token))
-                if idx - 1 == jdx:
+                if anchor == jdx:
                     raise ValueError('Marker {} specifies a bond between an '
                                      'atom and itself'.format(token))
                 mol.add_edge(anchor, jdx, **{edge_attr: next_bond, '_pos': token_idx})
@@ -190,7 +190,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 del ring_nums[token]
                 # we need to keep track of ring bonds here for the
                 # chirality assignment
-                created_ring_bonds.append((idx-1, jdx, {edge_attr: next_bond, '_pos': token_idx}))
+                created_ring_bonds.append((anchor, jdx, {edge_attr: next_bond, '_pos': token_idx}))
             else:
                 if idx == 0:
                     raise ValueError("Can't have a marker ({}) before an atom"
