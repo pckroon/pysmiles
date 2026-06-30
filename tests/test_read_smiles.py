@@ -932,6 +932,9 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('CCCCCCCC$C', KeyError),
     ('C.C(O)1C.C1', ValueError),
     ('C1.C(O)1C.C', ValueError),
+    ('(C)', SyntaxError),
+    ('1CC1', ValueError),
+    # ('BrC/=CF', ValueError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
@@ -1052,7 +1055,8 @@ def test_non_canonical_smiles_handling(smiles):
 @pytest.mark.parametrize("smiles, loglevel, kwargs", [
     ('CC.C(O)1C.CC1', logging.WARNING, dict(strict=False)),
     ('C1C.C(O)1C.CC', logging.WARNING, dict(strict=False)),
-
+    ('[X]', logging.WARNING, dict(strict=False)),
+    ('[CH5]', logging.WARNING, dict(strict=False)),
 
 ])
 def test_logging(caplog, smiles, loglevel, kwargs):

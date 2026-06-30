@@ -72,7 +72,7 @@ def _tokenize(smiles):
             break
         if char == '[':
             token = char
-            for char in smiles:  # pragma: no branch
+            for char in smiles:
                 token += char
                 if char == ']':
                     break
@@ -208,7 +208,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (anchor, next_bond)
                 next_bond = None
-        elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
+        elif tokentype == TokenType.EZSTEREO:
             ez_isomer_atoms[anchor] = token
             ez_isomer_atoms[idx] = token
         prev_token = token
