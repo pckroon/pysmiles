@@ -17,6 +17,7 @@ import pytest
 import networkx as nx
 from pysmiles import read_smiles
 from pysmiles.testhelper import assertEqualGraphs, make_mol
+import logging
 
 
 @pytest.mark.parametrize('smiles, node_data, edge_data, explicit_h', (
@@ -929,6 +930,8 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('C[O@]C', ValueError),
     ('CC(C)(=C)C', KeyError),
     ('CCCCCCCC$C', KeyError),
+    ('C.C(O)1C.C1', ValueError),
+    ('C1.C(O)1C.C', ValueError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
@@ -1044,3 +1047,16 @@ def test_non_canonical_smiles_handling(smiles):
                       (11, 12), (11, 13), (13, 14), (13, 15), (15, 16)]
     assert list(mol.nodes) == expected_nodes
     assert list(mol.edges) == expected_edges
+
+
+@pytest.mark.parametrize("smiles, loglevel, kwargs", [
+    ('CC.C(O)1C.CC1', logging.WARNING, dict(strict=False)),
+    ('C1C.C(O)1C.CC', logging.WARNING, dict(strict=False)),
+
+
+])
+def test_logging(caplog, smiles, loglevel, kwargs):
+    with caplog.at_level(loglevel):
+        read_smiles(smiles, **kwargs)
+    relevant_records = [record for record in caplog.records if record.levelno == loglevel]
+    assert len(relevant_records) == 1
