@@ -188,7 +188,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
 
                 if anchor != idx-1:
                     msg = ('Marker %i appears after a branch closing, which is'
-                           ' invalid smiles according to the OpenSMILES specification.'
+                           ' invalid SMILES according to the OpenSMILES specification.'
                            ' Rather than specifying the marker after the branch'
                            ' (`C(O)1`), it should appear before (`C1(O)`).')
                     if strict:
