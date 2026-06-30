@@ -185,6 +185,16 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 if anchor == jdx:
                     raise ValueError('Marker {} specifies a bond between an '
                                      'atom and itself'.format(token))
+
+                if anchor != idx-1:
+                    msg = ('Marker %i appears after a branch closing, which is'
+                           ' invalid smiles according to the OpenSMILES specification.'
+                           ' Rather than specifying the marker after the branch'
+                           ' (`C(O)1`), it should appear before (`C1(O)`).')
+                    if strict:
+                        raise ValueError(msg % token)
+                    else:
+                        LOGGER.warning(msg, token)
                 mol.add_edge(anchor, jdx, **{edge_attr: next_bond, '_pos': token_idx})
                 next_bond = None
                 del ring_nums[token]

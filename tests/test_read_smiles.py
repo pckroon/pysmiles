@@ -1035,7 +1035,7 @@ def test_non_canonical_smiles_handling(smiles):
     # can help accommodate SMILES strings provided by chemists
     # per:
     # https://github.com/gruenewald-lab/CGsmiles/issues/70
-    mol = read_smiles(smiles)
+    mol = read_smiles(smiles, strict=False)
     # expected values are from the "good" string at:
     # https://github.com/gruenewald-lab/CGsmiles/issues/70#issuecomment-4750353505
     expected_nodes = list(range(17))
