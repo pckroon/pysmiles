@@ -934,7 +934,6 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('C1.C(O)1C.C', ValueError),
     ('(C)', SyntaxError),
     ('1CC1', ValueError),
-    # ('BrC/=CF', ValueError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):

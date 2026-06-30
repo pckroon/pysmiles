@@ -96,7 +96,7 @@ def _tokenize(smiles):
             yield TokenType.RING_NUM, idx, int(next(smiles, '') + next(smiles, ''))
         elif char in '/\\':
             yield TokenType.EZSTEREO, idx, char
-        elif char.isdigit():  # pragma: no branch
+        elif char.isdigit():
             yield TokenType.RING_NUM, idx, int(char)
 
 
@@ -140,7 +140,6 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     next_bond = None
     branches = []
     ring_nums = {}
-    current_ez = None
     ez_isomer_atoms = {}
     created_ring_bonds = []
     prev_token = None
@@ -216,9 +215,6 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
 
     if ring_nums and strict:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
-
-    if current_ez and strict:
-        raise ValueError('There is an unmatched stereochemical token.')
 
     return mol, ez_isomer_atoms, created_ring_bonds
 
