@@ -31,7 +31,7 @@ jobs:
     - name: Install package and requirements
       run: |
         pip install --upgrade .
-        pip install -r requirements-tests.txt
+        pip install --group test
     - name: Run pytest with codecoverage
       run: |
         coverage run --source=pysmiles $(which pytest) --hypothesis-show-statistics
@@ -65,7 +65,7 @@ jobs:
         pip install --upgrade .
     - name: Install pypa/build
       run: |
-        python3 -m pip install build pbr --user
+        python3 -m pip install build --user
     - name: Build a binary wheel and a source tarball
       run: python3 -m build --sdist --wheel --outdir dist/
     - name: Publish distribution 📦 to PyPI

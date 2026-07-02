@@ -1,0 +1,72 @@
+[build-system]
+requires = [
+        "setuptools >= 80.0.0",
+        "setuptools-scm[simple] >= 9.2"
+    ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysmiles"
+dynamic = ["version"]
+authors = [
+    {name = "P C Kroon"},
+]
+maintainers = [
+    {name = "P C Kroon"},
+]
+requires-python = ">= 3.10"
+readme = {file = "README.md", content-type = "text/markdown; charset=UTF-8"}
+description = "A lightweight SMILES reader and writer"
+license = "Apache-2.0"
+license-files = ["LICENSE.md"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+keywords = ["SMILES", "cheminformatics", "chemistry"]
+dependencies = [
+    "networkx ~= 3.0",
+]
+
+[project.urls]
+Repository = "https://github.com/pckroon/pysmiles"
+Issues = "https://github.com/pckroon/pysmiles/issues"
+
+[dependency-groups]
+test = [
+    "pylint",
+    "pytest",
+    "coverage",
+    "pytest-cov",
+    "hypothesis",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pysmiles*"]
+namespaces = false
+
+[tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source_pkgs = ["pysmiles"]
+omit = [
+    "tests/*",
+    "pysmiles/testhelper.py",
+]
+
+[tool.coverage.report]
+show_missing = true

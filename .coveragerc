@@ -1,7 +1,0 @@
-[run]
-branch = True
-source = pysmiles
-omit = */tests/*, pysmiles/testhelper.py
-
-[report]
-show_missing = True
