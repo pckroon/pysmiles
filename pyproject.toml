@@ -56,8 +56,10 @@ namespaces = false
 
 [tool.setuptools_scm]
 
-[tool.pytest.ini_options]
-addopts = "--import-mode=importlib"
+[tool.pytest]
+addopts = [
+    "--import-mode=importlib",
+]
 testpaths = ["tests"]
 
 [tool.coverage.run]
