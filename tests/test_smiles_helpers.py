@@ -662,3 +662,16 @@ def test_interpret_cis_trans_tokens_marks_case_three_as_cis():
 
     assert mol.nodes[0]['ez_isomer'] == [(0, 1, 2, 3, 'cis')]
     assert mol.nodes[3]['ez_isomer'] == [(3, 2, 1, 0, 'cis')]
+
+
+def test_increment_bond_orders_no_warning_when_all_satisfied(caplog):
+    mol = make_mol(
+        [(0, {'element': 'N'}),
+         (1, {'element': 'N'})],
+        [(0, 1, {'order': 2})],
+    )
+    with caplog.at_level('WARNING'):
+        increment_bond_orders(mol, max_bond_order=3)
+
+    assert mol.edges[0, 1]['order'] == 3
+    assert not caplog.records
