@@ -34,8 +34,7 @@ jobs:
         pip install --group test
     - name: Run pytest with codecoverage
       run: |
-        coverage run --source=pysmiles $(which pytest) --hypothesis-show-statistics
-        coverage report
+        pytest --cov --hypothesis-show-statistics
 
   deploy:
     needs: [build]
