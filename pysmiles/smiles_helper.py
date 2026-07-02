@@ -964,10 +964,10 @@ def _interpret_cis_trans_tokens(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'cis'
             # case 4 F\C=C\F
-            elif ez_first == '\\' and ez_second == '\\':
+            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
                 ez_isomer = 'trans'
         # as in C(/F)=C
-        elif ligand_first > anchor_first:
+        elif ligand_first > anchor_first:  # pragma: no branch
             # case 5 C(\F)=C/F is trans
             if ez_first == '\\' and ez_second == '/':
                 ez_isomer = 'trans'
@@ -978,7 +978,7 @@ def _interpret_cis_trans_tokens(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'trans'
             # case 8 C(\F)=C\F
-            elif ez_first == '\\' and ez_second == '\\':
+            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
                 ez_isomer = 'cis'
         assert ez_isomer is not None
 
