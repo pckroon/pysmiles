@@ -144,7 +144,7 @@ def format_atom(molecule, node_key, default_element='*'):
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None or node.get('ez_isomer'):  # pragma: nocover
+    if stereo is not None or node.get('ez_isomer'):
         LOGGER.warning("The SMILES writer does not write stereochemical information")
 
     if aromatic and name in AROMATIC_ATOMS:
@@ -242,8 +242,7 @@ def add_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     h_atom = parse_atom('[H]')
-    if 'hcount' in h_atom:  # pragma: nocover; defensive
-        del h_atom['hcount']
+    del h_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
         idxs = range(max(mol) + 1, max(mol) + hcount + 1)

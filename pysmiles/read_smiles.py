@@ -72,10 +72,12 @@ def _tokenize(smiles):
             break
         if char == '[':
             token = char
-            for char in smiles:  # pragma: no branch
+            for char in smiles:
                 token += char
                 if char == ']':
                     break
+            else: # nobreak
+                raise SyntaxError('Invalid SMILES: unmatched atom bracket')
             yield TokenType.ATOM, idx, token
         elif char in organic_subset:
             peek = next(smiles, '')
@@ -128,7 +130,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
         ``_pos``.
     List[Tuple[Tuple[int, int, str], Tuple[int, int, str]]]
         A list of E/Z isomer pairs, where the integers are node indices and last
-        element is the directional token from the smiles string (*i.e.* / or \).
+        element is the directional token from the smiles string (*i.e.* / or \\).
     List[Tuple[int, int, {edge_attr: str, '_pos': int}]
         A list of created ring bonds, to be used for R/S isomer annotation. It
         contains tuples consisting of 2 node indices, and a dictionary
@@ -140,7 +142,6 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
     next_bond = None
     branches = []
     ring_nums = {}
-    current_ez = None
     ez_isomer_atoms = {}
     created_ring_bonds = []
     prev_token = None
@@ -167,6 +168,18 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                                  'Overwritten by "{}"'.format(next_bond, token))
             next_bond = token
         elif tokentype == TokenType.RING_NUM:
+            if anchor is None:
+                raise ValueError("Can't have a marker ({}) before an atom"
+                                 "".format(token))
+            if anchor != idx - 1:
+                msg = ('Marker %i appears after a branch closing, which is'
+                       ' invalid SMILES according to the OpenSMILES specification.'
+                       ' Rather than specifying the marker after the branch'
+                       ' (`C(O)1`), it should appear before (`C1(O)`).')
+                if strict:
+                    raise ValueError(msg % token)
+                else:
+                    LOGGER.warning(msg, token)
             if token in ring_nums:
                 jdx, order = ring_nums[token]
                 if next_bond is None and order is None:
@@ -185,6 +198,7 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 if anchor == jdx:
                     raise ValueError('Marker {} specifies a bond between an '
                                      'atom and itself'.format(token))
+
                 mol.add_edge(anchor, jdx, **{edge_attr: next_bond, '_pos': token_idx})
                 next_bond = None
                 del ring_nums[token]
@@ -192,11 +206,8 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 # chirality assignment
                 created_ring_bonds.append((anchor, jdx, {edge_attr: next_bond, '_pos': token_idx}))
             else:
-                if idx == 0:
-                    raise ValueError("Can't have a marker ({}) before an atom"
-                                     "".format(token))
                 # idx is the index of the *next* atom we're adding. So: -1.
-                ring_nums[token] = (idx - 1, next_bond)
+                ring_nums[token] = (anchor, next_bond)
                 next_bond = None
         elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
             ez_isomer_atoms[anchor] = token
@@ -206,9 +217,6 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
 
     if ring_nums and strict:
         raise KeyError('Unmatched ring indices {}'.format(list(ring_nums.keys())))
-
-    if current_ez and strict:
-        raise ValueError('There is an unmatched stereochemical token.')
 
     return mol, ez_isomer_atoms, created_ring_bonds
 

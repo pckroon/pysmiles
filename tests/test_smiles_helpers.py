@@ -14,11 +14,14 @@
 # limitations under the License.
 
 import pytest
+import networkx as nx
 
 from pysmiles.smiles_helper import (
     fill_valence, remove_explicit_hydrogens,
     add_explicit_hydrogens, correct_aromatic_rings,
-    valence, kekulize, dekekulize,
+    valence, kekulize, dekekulize, increment_bond_orders,
+    format_atom, _bonds, _reorder_cycle, _check_for_ez_conflicts,
+    _interpret_cis_trans_tokens,
 )
 from pysmiles.testhelper import assertEqualGraphs, make_mol
 
@@ -540,6 +543,7 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
     ({'element': 'P'}, [3, 5]),
     ({'element': 'N', 'charge': 1}, [4]),
     ({'element': 'B', 'charge': 1}, [2]),
+    ({'element': '*'}, []),
 ])
 def test_valence(atom, expected):
     found = valence(atom)
@@ -553,3 +557,121 @@ def test_valence(atom, expected):
 def test_valence_error(atom):
     with pytest.raises(ValueError):
         valence(atom)
+
+
+def test_bonds_without_order_counts_neighbors():
+    mol = make_mol(
+        [(0, {'element': 'C'}), (1, {'element': 'N'})],
+        [(0, 1, {'order': 3})],
+    )
+
+    assert _bonds(mol, 0, use_order=False) == 1
+
+
+def test_correct_aromatic_rings_warns_for_unmatched_aromatic_region(caplog):
+    mol = make_mol(
+        [(0, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (2, {'element': 'C', 'hcount': 1, 'aromatic': True})],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 0, {'order': 1.5})],
+    )
+
+    with caplog.at_level('WARNING'):
+        correct_aromatic_rings(mol, strict=False)
+
+    assert 'Your molecule is invalid and cannot be kekulized.' in caplog.text
+    assert sorted(edge['order'] for *_, edge in mol.edges(data=True)) == [1, 1, 2]
+
+
+def test_kekulize_rejects_non_kekulizable_aromatic_region():
+    mol = make_mol(
+        [(0, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (1, {'element': 'C', 'hcount': 1, 'aromatic': True}),
+         (2, {'element': 'C', 'hcount': 1, 'aromatic': True})],
+        [(0, 1, {'order': 1.5}),
+         (1, 2, {'order': 1.5}),
+         (2, 0, {'order': 1.5})],
+    )
+
+    with pytest.raises(ValueError, match='Aromatic region cannot be kekulized.'):
+        kekulize(mol)
+
+
+def test_reorder_cycle_returns_empty_for_no_nodes():
+    assert _reorder_cycle(nx.Graph(), []) == []
+
+
+def test_reorder_cycle_raises_for_non_cycle():
+    graph = nx.path_graph([0, 1, 2])
+    graph.add_node(3)
+
+    with pytest.raises(nx.NetworkXNoCycle, match='Not a cycle'):
+        _reorder_cycle(graph, [0, 1, 2, 3])
+
+
+def test_increment_bond_orders_skips_edges_once_a_node_is_satisfied(caplog):
+    mol = make_mol(
+        [(0, {'element': 'C'}),
+         (1, {'element': 'C'}),
+         (2, {'element': 'C'})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1})],
+    )
+
+    with caplog.at_level('WARNING'):
+        increment_bond_orders(mol)
+
+    assert sorted(edge['order'] for *_, edge in mol.edges(data=True)) == [1, 3]
+    assert 'Unable to completely assign bond orders from valence.' in caplog.text
+
+
+def test_format_atom_warns_for_stereochemistry(caplog):
+    mol = make_mol([(0, {'element': 'C', 'rs_isomer': ('clockwise', ())})], [])
+
+    with caplog.at_level('WARNING'):
+        assert format_atom(mol, 0) == '[C]'
+
+    assert 'does not write stereochemical information' in caplog.text
+
+
+def test_format_atom_formats_single_hydrogen_and_multiplied_charge():
+    mol = make_mol([(0, {'element': 'N', 'hcount': 1, 'charge': 2})], [])
+
+    assert format_atom(mol, 0) == '[NH+2]'
+
+
+@pytest.mark.parametrize('anchor, tagged_nodes, ez_isomer_class', [
+    (5, (1, 2), {1: '/', 2: '/'}),
+    (2, (1, 3), {1: '/', 3: '\\'}),
+])
+def test_check_for_ez_conflicts_raises(anchor, tagged_nodes, ez_isomer_class):
+    with pytest.raises(ValueError, match='Conflicting cis/trans assignment'):
+        _check_for_ez_conflicts(anchor, tagged_nodes, ez_isomer_class)
+
+
+def test_check_for_ez_conflicts_allows_distinct_same_side_tokens():
+    _check_for_ez_conflicts(5, (1, 2), {1: '/', 2: '\\'})
+
+
+def test_interpret_cis_trans_tokens_marks_case_three_as_cis():
+    mol = make_mol([(0, {}), (1, {}), (2, {}), (3, {})], [])
+
+    _interpret_cis_trans_tokens(mol, [[[0, 1, '/'], [3, 2, '\\']]])
+
+    assert mol.nodes[0]['ez_isomer'] == [(0, 1, 2, 3, 'cis')]
+    assert mol.nodes[3]['ez_isomer'] == [(3, 2, 1, 0, 'cis')]
+
+
+def test_increment_bond_orders_no_warning_when_all_satisfied(caplog):
+    mol = make_mol(
+        [(0, {'element': 'N'}),
+         (1, {'element': 'N'})],
+        [(0, 1, {'order': 2})],
+    )
+    with caplog.at_level('WARNING'):
+        increment_bond_orders(mol, max_bond_order=3)
+
+    assert mol.edges[0, 1]['order'] == 3
+    assert not caplog.records

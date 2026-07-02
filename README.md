@@ -54,8 +54,9 @@ element attribute.
     information in the SMILES string.
 - `strict` determines whether the function be a bit more critical about what 
     constitutes a valid SMILES string. In particular, checks whether the 
-    specified aromatic fragments can be kekulized, and whether atom valency 
-    is sensible. 
+    specified aromatic fragments can be kekulized, whether atom valency 
+    is sensible, and (within limitations) whether the string follows the 
+    OpenSMILES specification. 
 
 ### Stereochemical information
 Tetrahedral chirality is stored on nodes in the 'rs_isomer' attribute. It 

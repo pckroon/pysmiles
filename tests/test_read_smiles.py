@@ -17,6 +17,7 @@ import pytest
 import networkx as nx
 from pysmiles import read_smiles
 from pysmiles.testhelper import assertEqualGraphs, make_mol
+import logging
 
 
 @pytest.mark.parametrize('smiles, node_data, edge_data, explicit_h', (
@@ -929,6 +930,11 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('C[O@]C', ValueError),
     ('CC(C)(=C)C', KeyError),
     ('CCCCCCCC$C', KeyError),
+    ('C.C(O)1C.C1', ValueError),
+    ('C1.C(O)1C.C', ValueError),
+    ('(C)', SyntaxError),
+    ('1CC1', ValueError),
+    ('[CH4', SyntaxError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
@@ -1035,7 +1041,7 @@ def test_non_canonical_smiles_handling(smiles):
     # can help accommodate SMILES strings provided by chemists
     # per:
     # https://github.com/gruenewald-lab/CGsmiles/issues/70
-    mol = read_smiles(smiles)
+    mol = read_smiles(smiles, strict=False)
     # expected values are from the "good" string at:
     # https://github.com/gruenewald-lab/CGsmiles/issues/70#issuecomment-4750353505
     expected_nodes = list(range(17))
@@ -1044,3 +1050,18 @@ def test_non_canonical_smiles_handling(smiles):
                       (11, 12), (11, 13), (13, 14), (13, 15), (15, 16)]
     assert list(mol.nodes) == expected_nodes
     assert list(mol.edges) == expected_edges
+
+
+@pytest.mark.parametrize("smiles, loglevel, kwargs", [
+    ('CC.C(O)1C.CC1', logging.WARNING, dict(strict=False)),
+    ('C1C.C(O)1C.CC', logging.WARNING, dict(strict=False)),
+    ('[X]', logging.WARNING, dict(strict=False)),
+    ('[CH5]', logging.WARNING, dict(strict=False)),
+    ('c1cc1', logging.WARNING, dict(strict=False)),
+])
+def test_readsmiles_logging(caplog, smiles, loglevel, kwargs):
+    with caplog.at_level(loglevel):
+        read_smiles(smiles, **kwargs)
+    relevant_records = [record for record in caplog.records if record.levelno == loglevel]
+    assert len(relevant_records) == 1
+
