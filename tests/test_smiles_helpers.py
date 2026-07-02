@@ -543,6 +543,7 @@ def test_helper(helper, kwargs, n_data_in, e_data_in, n_data_out, e_data_out):
     ({'element': 'P'}, [3, 5]),
     ({'element': 'N', 'charge': 1}, [4]),
     ({'element': 'B', 'charge': 1}, [2]),
+    ({'element': '*'}, []),
 ])
 def test_valence(atom, expected):
     found = valence(atom)
@@ -633,6 +634,12 @@ def test_format_atom_warns_for_stereochemistry(caplog):
         assert format_atom(mol, 0) == '[C]'
 
     assert 'does not write stereochemical information' in caplog.text
+
+
+def test_format_atom_formats_single_hydrogen_and_multiplied_charge():
+    mol = make_mol([(0, {'element': 'N', 'hcount': 1, 'charge': 2})], [])
+
+    assert format_atom(mol, 0) == '[NH+2]'
 
 
 @pytest.mark.parametrize('anchor, tagged_nodes, ez_isomer_class', [
