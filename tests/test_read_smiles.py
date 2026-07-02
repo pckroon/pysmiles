@@ -934,6 +934,7 @@ def test_read_smiles(smiles, node_data, edge_data, explicit_h):
     ('C1.C(O)1C.C', ValueError),
     ('(C)', SyntaxError),
     ('1CC1', ValueError),
+    ('[CH4', SyntaxError),
 ))
 def test_invalid_smiles(smiles, error_type):
     with pytest.raises(error_type):
@@ -1056,10 +1057,11 @@ def test_non_canonical_smiles_handling(smiles):
     ('C1C.C(O)1C.CC', logging.WARNING, dict(strict=False)),
     ('[X]', logging.WARNING, dict(strict=False)),
     ('[CH5]', logging.WARNING, dict(strict=False)),
-
+    ('c1cc1', logging.WARNING, dict(strict=False)),
 ])
-def test_logging(caplog, smiles, loglevel, kwargs):
+def test_readsmiles_logging(caplog, smiles, loglevel, kwargs):
     with caplog.at_level(loglevel):
         read_smiles(smiles, **kwargs)
     relevant_records = [record for record in caplog.records if record.levelno == loglevel]
     assert len(relevant_records) == 1
+

@@ -144,7 +144,7 @@ def format_atom(molecule, node_key, default_element='*'):
     aromatic = node.get('aromatic', False)
     default_h = has_default_h_count(molecule, node_key)
 
-    if stereo is not None or node.get('ez_isomer'):  # pragma: nocover
+    if stereo is not None or node.get('ez_isomer'):
         LOGGER.warning("The SMILES writer does not write stereochemical information")
 
     if aromatic and name in AROMATIC_ATOMS:
@@ -242,8 +242,7 @@ def add_explicit_hydrogens(mol):
         `mol` is modified in-place.
     """
     h_atom = parse_atom('[H]')
-    if 'hcount' in h_atom:  # pragma: nocover; defensive
-        del h_atom['hcount']
+    del h_atom['hcount']
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
         idxs = range(max(mol) + 1, max(mol) + hcount + 1)
@@ -965,10 +964,10 @@ def _interpret_cis_trans_tokens(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'cis'
             # case 4 F\C=C\F
-            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
+            elif ez_first == '\\' and ez_second == '\\':
                 ez_isomer = 'trans'
         # as in C(/F)=C
-        elif ligand_first > anchor_first:  # pragma: no branch
+        elif ligand_first > anchor_first:
             # case 5 C(\F)=C/F is trans
             if ez_first == '\\' and ez_second == '/':
                 ez_isomer = 'trans'
@@ -979,7 +978,7 @@ def _interpret_cis_trans_tokens(molecule, ez_pairs):
             elif ez_first == '/' and ez_second == '\\':
                 ez_isomer = 'trans'
             # case 8 C(\F)=C\F
-            elif ez_first == '\\' and ez_second == '\\':  # pragma: no branch
+            elif ez_first == '\\' and ez_second == '\\':
                 ez_isomer = 'cis'
         assert ez_isomer is not None
 

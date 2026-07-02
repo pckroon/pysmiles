@@ -76,6 +76,8 @@ def _tokenize(smiles):
                 token += char
                 if char == ']':
                     break
+            else: # nobreak
+                raise SyntaxError('Invalid SMILES: unmatched atom bracket')
             yield TokenType.ATOM, idx, token
         elif char in organic_subset:
             peek = next(smiles, '')
@@ -96,7 +98,7 @@ def _tokenize(smiles):
             yield TokenType.RING_NUM, idx, int(next(smiles, '') + next(smiles, ''))
         elif char in '/\\':
             yield TokenType.EZSTEREO, idx, char
-        elif char.isdigit():
+        elif char.isdigit():  # pragma: no branch
             yield TokenType.RING_NUM, idx, int(char)
 
 
@@ -166,6 +168,9 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                                  'Overwritten by "{}"'.format(next_bond, token))
             next_bond = token
         elif tokentype == TokenType.RING_NUM:
+            if anchor is None:
+                raise ValueError("Can't have a marker ({}) before an atom"
+                                 "".format(token))
             if anchor != idx - 1:
                 msg = ('Marker %i appears after a branch closing, which is'
                        ' invalid SMILES according to the OpenSMILES specification.'
@@ -201,13 +206,10 @@ def base_smiles_parser(smiles, strict=True, node_attr='desc', edge_attr='desc'):
                 # chirality assignment
                 created_ring_bonds.append((anchor, jdx, {edge_attr: next_bond, '_pos': token_idx}))
             else:
-                if anchor is None:
-                    raise ValueError("Can't have a marker ({}) before an atom"
-                                     "".format(token))
                 # idx is the index of the *next* atom we're adding. So: -1.
                 ring_nums[token] = (anchor, next_bond)
                 next_bond = None
-        elif tokentype == TokenType.EZSTEREO:
+        elif tokentype == TokenType.EZSTEREO:  # pragma: no branch
             ez_isomer_atoms[anchor] = token
             ez_isomer_atoms[idx] = token
         prev_token = token
