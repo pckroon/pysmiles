@@ -158,3 +158,39 @@ def test_write_smiles(node_data, edge_data, kwargs):
     print(kwargs)
     found = read_smiles(smiles, **kwargs)
     assertEqualGraphs(mol, found, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
+
+
+def test_write_smiles_with_start_node():
+    mol = make_mol(
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 3})],
+        [(0, 1, {'order': 1})]
+    )
+    smiles = write_smiles(mol, start=1)
+    found = read_smiles(smiles, zero_order_bonds=True, reinterpret_aromatic=True)
+    assertEqualGraphs(mol, found, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
+
+
+def test_write_smiles_ring_double_bond():
+    mol = make_mol(
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 2}),
+         (2, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 1})],
+        [(0, 1, {'order': 1}),
+         (1, 2, {'order': 1}),
+         (0, 2, {'order': 2})]
+    )
+    smiles = write_smiles(mol)
+    found = read_smiles(smiles, zero_order_bonds=True, reinterpret_aromatic=True)
+    assertEqualGraphs(mol, found, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
+
+
+def test_write_smiles_disconnected_with_start():
+    mol = make_mol(
+        [(0, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 4}),
+         (1, {'element': 'C', 'charge': 0, 'aromatic': False, 'hcount': 4})],
+        []
+    )
+    smiles = write_smiles(mol, start=1)
+    found = read_smiles(smiles, zero_order_bonds=False, reinterpret_aromatic=True)
+    assertEqualGraphs(mol, found, excluded_node_attrs=['_pos', '_atom_str'], excluded_edge_attrs=['_pos', '_bond_str'])
