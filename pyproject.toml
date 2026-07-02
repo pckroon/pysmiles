@@ -41,7 +41,7 @@ Issues = "https://github.com/pckroon/pysmiles/issues"
 test = [
     "pylint",
     "pytest",
-    "coverage",
+    "coverage[toml]",
     "pytest-cov",
     "hypothesis",
 ]
