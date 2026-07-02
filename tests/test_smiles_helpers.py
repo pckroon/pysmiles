@@ -20,7 +20,7 @@ from pysmiles.smiles_helper import (
     fill_valence, remove_explicit_hydrogens,
     add_explicit_hydrogens, correct_aromatic_rings,
     valence, kekulize, dekekulize, increment_bond_orders,
-    _bonds, _reorder_cycle, _check_for_ez_conflicts,
+    format_atom, _bonds, _reorder_cycle, _check_for_ez_conflicts,
     _interpret_cis_trans_tokens,
 )
 from pysmiles.testhelper import assertEqualGraphs, make_mol
@@ -624,6 +624,15 @@ def test_increment_bond_orders_skips_edges_once_a_node_is_satisfied(caplog):
 
     assert sorted(edge['order'] for *_, edge in mol.edges(data=True)) == [1, 3]
     assert 'Unable to completely assign bond orders from valence.' in caplog.text
+
+
+def test_format_atom_warns_for_stereochemistry(caplog):
+    mol = make_mol([(0, {'element': 'C', 'rs_isomer': ('clockwise', ())})], [])
+
+    with caplog.at_level('WARNING'):
+        assert format_atom(mol, 0) == '[C]'
+
+    assert 'does not write stereochemical information' in caplog.text
 
 
 @pytest.mark.parametrize('anchor, tagged_nodes, ez_isomer_class', [
