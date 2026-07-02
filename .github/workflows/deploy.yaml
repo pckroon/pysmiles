@@ -39,6 +39,10 @@ jobs:
   deploy:
     needs: [build]
     runs-on: ubuntu-latest
+    env:
+      # Strip local version from version -> 0.15.1.dev51 instead of 0.15.1.dev51+gc45000f63.d20260526
+      # And fail if that's not possible/required.
+      SETUPTOOLS_SCM_OVERRIDES_FOR_PYSMILES: '{local_scheme = ["fail-on-uncommitted-changes","no-local-version"]}'
     environment:
       name: pypi
       url: https://pypi.org/p/pysmiles
