@@ -36,7 +36,8 @@ jobs:
         pip install --group test
     - name: Run pytest with codecoverage
       run: |
-        pytest --cov --hypothesis-show-statistics
+        coverage run -m pytest --hypothesis-show-statistics
+        coverage report
     - name: Coveralls
       uses: coverallsapp/github-action@v2
 
