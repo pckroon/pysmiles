@@ -1,0 +1,4 @@
+# Exclude all git-tracked files that should not be packaged. setuptools-scm includes.
+prune .github
+prune tests
+global-exclude *.pyc __pycache__ .*

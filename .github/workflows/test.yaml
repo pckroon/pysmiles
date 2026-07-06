@@ -19,12 +19,12 @@ jobs:
 
     strategy:
       matrix:
-       py_version: ["3.8", "3.9", "3.10", "3.11"]
+       py_version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up Python ${{ matrix.py_version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.py_version }}
     - name: Install dependencies
@@ -33,26 +33,27 @@ jobs:
     - name: Install package and requirements
       run: |
         pip install --upgrade .
-        pip install -r requirements-tests.txt
+        pip install --group test
     - name: Run pytest with codecoverage
       run: |
-        coverage run --source=pysmiles $(which pytest) --hypothesis-show-statistics
+        coverage run -m pytest --hypothesis-show-statistics
         coverage report
-        coveralls
+    - name: Coveralls
+      uses: coverallsapp/github-action@v2
 
   lint:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: 3.11
+        python-version: 3.14
     - name: Install dependencies
       run: |
         pip install --upgrade setuptools pip
-        pip install -r requirements-tests.txt
+        pip install --group test
         pip install --upgrade .
     - name: Run pylint
       run: |
@@ -61,20 +62,23 @@ jobs:
   deploy:
     needs: [build, lint]
     runs-on: ubuntu-latest
+    env:
+      # Strip local version from version -> 0.15.1.dev51 instead of 0.15.1.dev51+gc45000f63.d20260526
+      SETUPTOOLS_SCM_OVERRIDES_FOR_PYSMILES: '{local_scheme = "no-local-version"}'
     environment:
       name: testpypi
       url: https://test.pypi.org/p/pysmiles
     permissions:
       id-token: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-tags: true
         fetch-depth: 0
     - name: Set up Python 3
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.11'
+        python-version: '3.14'
         cache: pip
         cache-dependency-path: |
           **/setup.cfg
@@ -86,7 +90,7 @@ jobs:
         pip install --upgrade .
     - name: Install pypa/build
       run: |
-        python3 -m pip install build pbr --user
+        python3 -m pip install build --user
     - name: Build a binary wheel and a source tarball
       run: python3 -m build --sdist --wheel --outdir dist/
     - name: Publish distribution 📦 to test PyPI
