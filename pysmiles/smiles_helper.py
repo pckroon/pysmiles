@@ -243,9 +243,11 @@ def add_explicit_hydrogens(mol):
     """
     h_atom = parse_atom('[H]')
     del h_atom['hcount']
+    next_idx = max(mol, default=-1) + 1
     for n_idx in list(mol.nodes):
         hcount = mol.nodes[n_idx].get('hcount', 0)
-        idxs = range(max(mol) + 1, max(mol) + hcount + 1)
+        idxs = range(next_idx, next_idx + hcount)
+        next_idx += hcount
         # Get the defaults from parse_atom.
         mol.add_nodes_from(idxs, **h_atom.copy())
         mol.add_edges_from([(n_idx, jdx) for jdx in idxs], order=1)
